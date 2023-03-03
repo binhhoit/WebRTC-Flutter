@@ -56,6 +56,7 @@ class Signaling {
   VideoSource _videoSource = VideoSource.Camera;
 
   Function(SignalingState state)? onSignalingStateChange;
+  Function(WebRTCSessionState state)? onWebRTCSessionState;
   Function(Session session, CallState state)? onCallStateChange;
   Function(MediaStream stream)? onLocalStream;
   Function(Session session, MediaStream stream)? onAddRemoteStream;
@@ -176,26 +177,19 @@ class Signaling {
     bye(session.sid);
   }
 
-  //TODO: handle state connect serverling
+  //TODO: handle state connect server
   Future<void> handleStateMessage(String text) async {
     var state = _getSeparatedMessage(text);
-    var enabledCall = false;
     if (state == WebRTCSessionState.Active.name) {
-      enabledCall = false;
+      onWebRTCSessionState?.call(WebRTCSessionState.Active);
     } else if (state == WebRTCSessionState.Creating.name) {
-      enabledCall = true;
-      //Handle Button
-      await Future.delayed(Duration(milliseconds: 4000));
-      onSessionScreenReady();
+      onWebRTCSessionState?.call(WebRTCSessionState.Creating);
     } else if (state == WebRTCSessionState.Ready.name) {
-      enabledCall = true;
-      //Handle Button
-      await Future.delayed(Duration(milliseconds: 2000));
-      //onSessionScreenReady();
+      onWebRTCSessionState?.call(WebRTCSessionState.Ready);
     } else if (state == WebRTCSessionState.Impossible.name) {
-      enabledCall = false;
+      onWebRTCSessionState?.call(WebRTCSessionState.Impossible);
     } else if (state == WebRTCSessionState.Offline.name) {
-      enabledCall = false;
+      onWebRTCSessionState?.call(WebRTCSessionState.Offline);
     }
   }
 
@@ -683,9 +677,11 @@ class Signaling {
       var peerId = '1';
       var sessionId = _selfId + '-' + peerId;
       accept(sessionId);
+      print("--------accept--------");
     } else {
       var peerId = '1';
       invite(peerId, 'video', false);
+      print("--------invite--------");
     }
   }
 }

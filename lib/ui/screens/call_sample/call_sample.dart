@@ -2,6 +2,7 @@ import 'dart:core';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
+import 'package:webrtc_flutter/ui/screens/call_sample/Constants.dart';
 
 import '../../widgets/screen_select_dialog.dart';
 import 'signaling.dart';
@@ -25,6 +26,7 @@ class _CallSampleState extends State<CallSample> {
   Session? _session;
   DesktopCapturerSource? selected_source_;
   bool _waitAccept = false;
+  var _enabledCall = false;
 
   // ignore: unused_element
   _CallSampleState();
@@ -63,6 +65,33 @@ class _CallSampleState extends State<CallSample> {
           print(state);
           break;
       }
+    };
+
+    _signaling?.onWebRTCSessionState = (WebRTCSessionState state) {
+      setState(() {
+        switch (state) {
+          case WebRTCSessionState.Active:
+            print(state);
+            _enabledCall = false;
+            break;
+          case WebRTCSessionState.Ready:
+            print(state);
+            _enabledCall = true;
+            break;
+          case WebRTCSessionState.Creating:
+            print(state);
+            _enabledCall = true;
+            break;
+          case WebRTCSessionState.Impossible:
+            print(state);
+            _enabledCall = false;
+            break;
+          case WebRTCSessionState.Offline:
+            print(state);
+            _enabledCall = false;
+            break;
+        }
+      });
     };
 
     _signaling?.onCallStateChange = (Session session, CallState state) async {
@@ -282,80 +311,94 @@ class _CallSampleState extends State<CallSample> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text('P2P Call Sample' + (_selfId != null ? ' [Your ID ($_selfId)] ' : '')),
-        actions: <Widget>[
-          IconButton(
-            icon: const Icon(Icons.settings),
-            onPressed: null,
-            tooltip: 'setup',
-          ),
-        ],
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-      floatingActionButton: _inCalling
-          ? SizedBox(
-              width: 240.0,
-              child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: <Widget>[
-                FloatingActionButton(
-                  child: const Icon(Icons.switch_camera),
-                  tooltip: 'Camera',
-                  onPressed: _switchCamera,
-                ),
-                FloatingActionButton(
-                  child: const Icon(Icons.desktop_mac),
-                  tooltip: 'Screen Sharing',
-                  onPressed: () => selectScreenSourceDialog(context),
-                ),
-                FloatingActionButton(
-                  onPressed: _hangUp,
-                  tooltip: 'Hangup',
-                  child: Icon(Icons.call_end),
-                  backgroundColor: Colors.pink,
-                ),
-                FloatingActionButton(
-                  child: const Icon(Icons.mic_off),
-                  tooltip: 'Mute Mic',
-                  onPressed: _muteMic,
-                )
-              ]))
-          : null,
-      body: _inCalling
-          ? OrientationBuilder(builder: (context, orientation) {
-              return Container(
-                child: Stack(children: <Widget>[
-                  Positioned(
-                      left: 0.0,
-                      right: 0.0,
-                      top: 0.0,
-                      bottom: 0.0,
-                      child: Container(
-                        margin: EdgeInsets.fromLTRB(0.0, 0.0, 0.0, 0.0),
-                        width: MediaQuery.of(context).size.width,
-                        height: MediaQuery.of(context).size.height,
-                        child: RTCVideoView(_remoteRenderer),
-                        decoration: BoxDecoration(color: Colors.black54),
-                      )),
-                  Positioned(
-                    left: 20.0,
-                    top: 20.0,
-                    child: Container(
-                      width: orientation == Orientation.portrait ? 90.0 : 120.0,
-                      height: orientation == Orientation.portrait ? 120.0 : 90.0,
-                      child: RTCVideoView(_localRenderer, mirror: true),
-                      decoration: BoxDecoration(color: Colors.black54),
-                    ),
+        appBar: AppBar(
+          title: Text('P2P Call Sample' + (_selfId != null ? ' [Your ID ($_selfId)] ' : '')),
+          actions: <Widget>[
+            IconButton(
+              icon: const Icon(Icons.settings),
+              onPressed: null,
+              tooltip: 'setup',
+            ),
+          ],
+        ),
+        floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+        floatingActionButton: _inCalling
+            ? SizedBox(
+                width: 240.0,
+                child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: <Widget>[
+                  FloatingActionButton(
+                    child: const Icon(Icons.switch_camera),
+                    tooltip: 'Camera',
+                    onPressed: _switchCamera,
                   ),
-                ]),
-              );
-            })
-          : ListView.builder(
-              shrinkWrap: true,
-              padding: const EdgeInsets.all(0.0),
-              itemCount: (_peers != null ? _peers.length : 0),
-              itemBuilder: (context, i) {
-                return _buildRow(context, _peers[i]);
-              }),
-    );
+                  FloatingActionButton(
+                    child: const Icon(Icons.desktop_mac),
+                    tooltip: 'Screen Sharing',
+                    onPressed: () => selectScreenSourceDialog(context),
+                  ),
+                  FloatingActionButton(
+                    onPressed: _hangUp,
+                    tooltip: 'Hangup',
+                    child: Icon(Icons.call_end),
+                    backgroundColor: Colors.pink,
+                  ),
+                  FloatingActionButton(
+                    child: const Icon(Icons.mic_off),
+                    tooltip: 'Mute Mic',
+                    onPressed: _muteMic,
+                  )
+                ]))
+            : null,
+        body: _inCalling
+            ? OrientationBuilder(builder: (context, orientation) {
+                return Container(
+                  child: Stack(children: <Widget>[
+                    Positioned(
+                        left: 0.0,
+                        right: 0.0,
+                        top: 0.0,
+                        bottom: 0.0,
+                        child: Container(
+                          margin: EdgeInsets.fromLTRB(0.0, 0.0, 0.0, 0.0),
+                          width: MediaQuery.of(context).size.width,
+                          height: MediaQuery.of(context).size.height,
+                          child: RTCVideoView(_remoteRenderer),
+                          decoration: BoxDecoration(color: Colors.black54),
+                        )),
+                    Positioned(
+                      left: 20.0,
+                      top: 20.0,
+                      child: Container(
+                        width: orientation == Orientation.portrait ? 90.0 : 120.0,
+                        height: orientation == Orientation.portrait ? 120.0 : 90.0,
+                        child: RTCVideoView(_localRenderer, mirror: true),
+                        decoration: BoxDecoration(color: Colors.black54),
+                      ),
+                    ),
+                  ]),
+                );
+              })
+            : Column(
+                children: [
+                  ListView.builder(
+                      shrinkWrap: true,
+                      padding: const EdgeInsets.all(0.0),
+                      itemCount: (_peers != null ? _peers.length : 0),
+                      itemBuilder: (context, i) {
+                        return _buildRow(context, _peers[i]);
+                      }),
+                  MaterialButton(
+                      onPressed: _enabledCall
+                          ? () {
+                              _signaling?.onSessionScreenReady();
+                            }
+                          : null,
+                      color: _enabledCall ? Colors.black : Colors.blueGrey,
+                      child: const Text(
+                        "Create Call / Answer",
+                        style: TextStyle(color: Colors.white),
+                      ))
+                ],
+              ));
   }
 }
