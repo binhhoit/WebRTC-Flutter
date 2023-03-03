@@ -40,16 +40,13 @@ class App extends StatelessWidget {
                   },
                   authenticated: () {
                     _navigator.pushAndRemoveUntil(
-                        MaterialPageRoute<void>(
-                            builder: (_) => const HomeScreen()),
-                        (route) => false);
+                        MaterialPageRoute<void>(builder: (_) => HomeScreen()), (route) => false);
                   });
             },
             child: child,
           );
         },
-        onGenerateRoute: (_) => MaterialPageRoute<void>(
-            builder: (_) => const SplashScreen()),
+        onGenerateRoute: (_) => MaterialPageRoute<void>(builder: (_) => const SplashScreen()),
       ),
     );
   }
