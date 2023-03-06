@@ -35,8 +35,7 @@ class AuthenticationBloc extends Bloc<AuthenticationEvent, AuthenticationState> 
     AuthEventStatusChanged event,
     Emitter<AuthenticationState> emit,
   ) async {
-    emit(const AuthenticationState.authenticated());
-    /* switch (event.status) {
+    switch (event.status) {
       case AuthenticationStatus.unauthenticated:
         return emit(const AuthenticationState.unauthenticated());
       case AuthenticationStatus.authenticated:
@@ -45,7 +44,7 @@ class AuthenticationBloc extends Bloc<AuthenticationEvent, AuthenticationState> 
         return emit(const AuthenticationState.unknown());
       case AuthenticationStatus.silentAuthenticated:
         break;
-    }*/
+    }
   }
 
   void _onAuthenticationLogoutRequested(

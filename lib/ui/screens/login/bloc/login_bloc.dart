@@ -1,25 +1,22 @@
-import 'package:bloc/bloc.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
-import 'package:webrtc_flutter/domain/usecases/auth_usecase.dart';
-import 'package:webrtc_flutter/ui/screens/login/bloc/login_event.dart';
-import 'package:webrtc_flutter/ui/screens/login/bloc/login_state.dart';
+import 'package:webrtc_flutter/domain/usecases/login_usecase.dart';
+
+import 'login_state.dart';
 
 @injectable
-class LoginBloc extends Bloc<LoginEvent, LoginState>{
+class LoginBloc extends Cubit<LoginState> {
+  LoginUseCase loginUseCase;
 
-  final AuthenticationUseCase authenticationUseCase;
+  LoginBloc(this.loginUseCase) : super(const LoginInit());
 
-  LoginBloc(this.authenticationUseCase): super(const LoginState.idle()) {
-    on<RequestLogin>(_onRequestLogin) ;
-  }
-
-  Future<void> _onRequestLogin(
-      RequestLogin event,
-      Emitter<LoginState> emit,
-      ) async {
+  Future<void> loginAction({required String email, required String pass}) async {
     emit(const LoginState.loading());
-    await authenticationUseCase.login();
-    emit(const LoginState.idle());
+    try {
+      await loginUseCase.loginWithGmail(email: email, pass: pass);
+      emit(const LoginState.validated());
+    } catch (e) {
+      emit(LoginState.error(e.toString()));
+    }
   }
-
 }

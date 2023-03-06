@@ -53,6 +53,8 @@ dependencies:
   # Network
   retrofit: 3.3.1
   dio: ^4.0.6
+  firebase_auth: ^4.2.3
+  firebase_core: ^2.4.1
 
   # Model
   freezed: ^2.0.0

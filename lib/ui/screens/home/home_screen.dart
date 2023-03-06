@@ -23,8 +23,6 @@ class _HomeScreen extends State<HomeScreen> {
 
   final _navigatorKey = GlobalKey<NavigatorState>();
 
-  NavigatorState get _navigator => _navigatorKey.currentState!;
-
   @override
   initState() {
     super.initState();
