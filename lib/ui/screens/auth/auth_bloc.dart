@@ -10,8 +10,7 @@ import 'auth_event.dart';
 import 'auth_state.dart';
 
 @injectable
-class AuthenticationBloc
-    extends Bloc<AuthenticationEvent, AuthenticationState> {
+class AuthenticationBloc extends Bloc<AuthenticationEvent, AuthenticationState> {
   final AuthenticationUseCase authenticationUseCase;
   final UserUseCase userUseCase;
 
@@ -19,14 +18,12 @@ class AuthenticationBloc
       : super(const AuthenticationState.unknown()) {
     on<AuthEventStatusChanged>(_onAuthenticationStatusChanged);
     on<AuthEventLogoutRequested>(_onAuthenticationLogoutRequested);
-    _authenticationStatusSubscription = authenticationUseCase.listenAuthStatus(
-      (status) {
-          add(AuthenticationEvent.statusChanged(status));
-      });
+    _authenticationStatusSubscription = authenticationUseCase.listenAuthStatus((status) {
+      add(AuthenticationEvent.statusChanged(status));
+    });
   }
 
-  late StreamSubscription<AuthenticationStatus>
-      _authenticationStatusSubscription;
+  late StreamSubscription<AuthenticationStatus> _authenticationStatusSubscription;
 
   @override
   Future<void> close() {
@@ -38,7 +35,8 @@ class AuthenticationBloc
     AuthEventStatusChanged event,
     Emitter<AuthenticationState> emit,
   ) async {
-    switch (event.status) {
+    emit(const AuthenticationState.authenticated());
+    /* switch (event.status) {
       case AuthenticationStatus.unauthenticated:
         return emit(const AuthenticationState.unauthenticated());
       case AuthenticationStatus.authenticated:
@@ -47,7 +45,7 @@ class AuthenticationBloc
         return emit(const AuthenticationState.unknown());
       case AuthenticationStatus.silentAuthenticated:
         break;
-    }
+    }*/
   }
 
   void _onAuthenticationLogoutRequested(

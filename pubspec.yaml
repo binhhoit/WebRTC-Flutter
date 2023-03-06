@@ -1,5 +1,5 @@
 name: webrtc_flutter
-description: A new Flutter project.
+description: video call WebRTC in mobile.
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -77,6 +77,10 @@ dev_dependencies:
   injectable_generator: ^1.5.3
   retrofit_generator: ^4.2.0
   hive_generator: ^1.1.2
+  flutter_webrtc: ^0.9.11
+  shared_preferences: ^2.0.7
+  http: ^0.13.3
+  path_provider: ^2.0.2
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
