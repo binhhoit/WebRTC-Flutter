@@ -35,8 +35,7 @@ class App extends StatelessWidget {
                   unknown: () {},
                   unauthenticated: () {
                     _navigator.pushAndRemoveUntil(
-                        MaterialPageRoute<void>(builder: (_) => const LoginScreen()),
-                        (route) => false);
+                        MaterialPageRoute<void>(builder: (_) => LoginScreen()), (route) => false);
                   },
                   authenticated: () {
                     _navigator.pushAndRemoveUntil(

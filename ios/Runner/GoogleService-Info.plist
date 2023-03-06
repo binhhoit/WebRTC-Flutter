@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CLIENT_ID</key>
+	<string>174153813964-spdquoft8oigca1bte6qnemv9gef6335.apps.googleusercontent.com</string>
+	<key>REVERSED_CLIENT_ID</key>
+	<string>com.googleusercontent.apps.174153813964-spdquoft8oigca1bte6qnemv9gef6335</string>
+	<key>ANDROID_CLIENT_ID</key>
+	<string>174153813964-6ip6ee9blkn1noq4407pbumj0uqt88hq.apps.googleusercontent.com</string>
+	<key>API_KEY</key>
+	<string>AIzaSyBNCdCFOtnz3xW0w-Fou7cUNBWhcyAJ9A0</string>
+	<key>GCM_SENDER_ID</key>
+	<string>174153813964</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>sts.saigon.webrtcFlutter</string>
+	<key>PROJECT_ID</key>
+	<string>webrtc-e4bbd</string>
+	<key>STORAGE_BUCKET</key>
+	<string>webrtc-e4bbd.appspot.com</string>
+	<key>IS_ADS_ENABLED</key>
+	<false></false>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false></false>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true></true>
+	<key>IS_GCM_ENABLED</key>
+	<true></true>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true></true>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:174153813964:ios:14df9f7eb0fccf6a29d769</string>
+	<key>DATABASE_URL</key>
+	<string>https://webrtc-e4bbd-default-rtdb.asia-southeast1.firebasedatabase.app</string>
+</dict>
+</plist>
