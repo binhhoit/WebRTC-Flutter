@@ -1,12 +1,14 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:webrtc_flutter/ui/route_item.dart';
 import 'package:webrtc_flutter/ui/screens/call_sample/call_sample.dart';
 import 'package:webrtc_flutter/ui/screens/call_sample/data_channel_sample.dart';
+import 'package:webrtc_flutter/ui/screens/login/login_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   @override
-  _HomeScreen createState() => new _HomeScreen();
+  _HomeScreen createState() => _HomeScreen();
 }
 
 enum DialogDemoAction {
@@ -20,8 +22,6 @@ class _HomeScreen extends State<HomeScreen> {
   late SharedPreferences _prefs;
 
   bool _datachannel = false;
-
-  final _navigatorKey = GlobalKey<NavigatorState>();
 
   @override
   initState() {
@@ -48,13 +48,25 @@ class _HomeScreen extends State<HomeScreen> {
           appBar: AppBar(
             title: Text('Flutter-WebRTC example'),
           ),
-          body: ListView.builder(
-              shrinkWrap: true,
-              padding: const EdgeInsets.all(0.0),
-              itemCount: items.length,
-              itemBuilder: (context, i) {
-                return _buildRow(context, items[i]);
-              })),
+          body: Column(
+            children: [
+              ListView.builder(
+                  shrinkWrap: true,
+                  padding: const EdgeInsets.all(0.0),
+                  itemCount: items.length,
+                  itemBuilder: (context, i) {
+                    return _buildRow(context, items[i]);
+                  }),
+              MaterialButton(
+                onPressed: () {
+                  FirebaseAuth.instance.signOut();
+                  Navigator.pushAndRemoveUntil(context,
+                      MaterialPageRoute<void>(builder: (_) => LoginScreen()), (route) => false);
+                },
+                child: const Icon(Icons.logout),
+              )
+            ],
+          )),
     );
   }
 
