@@ -10,4 +10,5 @@ class HomeState with _$HomeState {
   const factory HomeState.idle() = HomeIdle;
   const factory HomeState.error(String message) = HomeError;
   const factory HomeState.users(List<User> users) = UserData;
+  const factory HomeState.currentUser(User user) = CurrentUser;
 }

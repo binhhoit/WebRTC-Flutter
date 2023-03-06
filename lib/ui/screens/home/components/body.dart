@@ -5,19 +5,19 @@ import 'package:webrtc_flutter/ui/screens/home/bloc/home_bloc.dart';
 import 'package:webrtc_flutter/ui/screens/home/bloc/home_state.dart';
 
 class BodyHome extends StatefulWidget {
-  BodyHome({Key? key}) : super(key: key);
+  BodyHome({Key? key, required this.getCurrentUser}) : super(key: key);
+
+  Function(User user) getCurrentUser;
 
   @override
   State<BodyHome> createState() => _BodyHome();
 }
 
 class _BodyHome extends State<BodyHome> {
-  HomeBloc? _bloc;
   var users = <User>[];
 
   @override
   void initState() {
-    _bloc = context.read<HomeBloc>();
     super.initState();
   }
 
@@ -25,7 +25,7 @@ class _BodyHome extends State<BodyHome> {
   Widget build(BuildContext context) {
     return BlocConsumer<HomeBloc, HomeState>(builder: (context, state) {
       return state is HomeLoading
-          ? const CircularProgressIndicator()
+          ? const Center(child: CircularProgressIndicator())
           : ListView.builder(
               shrinkWrap: true,
               padding: const EdgeInsets.all(0.0),
@@ -38,6 +38,8 @@ class _BodyHome extends State<BodyHome> {
         setState(() {
           users = state.users;
         });
+      } else if (state is CurrentUser) {
+        widget.getCurrentUser(state.user);
       }
     });
   }

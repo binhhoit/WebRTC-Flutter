@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:webrtc_flutter/domain/entities/user/user.dart';
 import 'package:webrtc_flutter/injection.dart';
 import 'package:webrtc_flutter/ui/route_item.dart';
 import 'package:webrtc_flutter/ui/screens/home/bloc/home_bloc.dart';
@@ -12,13 +13,9 @@ class HomeScreen extends StatefulWidget {
   _HomeScreen createState() => _HomeScreen();
 }
 
-enum DialogDemoAction {
-  cancel,
-  connect,
-}
-
 class _HomeScreen extends State<HomeScreen> {
   List<RouteItem> items = [];
+  User currentUser = const User(id: "id", avatar: "avatar", email: "email", name: "name");
 
   @override
   initState() {
@@ -30,10 +27,13 @@ class _HomeScreen extends State<HomeScreen> {
     return MaterialApp(
         home: Scaffold(
             appBar: topBar(),
-            drawer: profileDrawer(context),
+            drawer: profileDrawer(context, currentUser),
             body: BlocProvider<HomeBloc>(
-              create: (context) => injector.get(),
-              child: BodyHome(),
-            )));
+                create: (context) => injector.get(),
+                child: BodyHome(getCurrentUser: (user) {
+                  setState(() {
+                    currentUser = user;
+                  });
+                }))));
   }
 }

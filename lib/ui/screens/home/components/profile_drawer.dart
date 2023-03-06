@@ -1,23 +1,25 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:webrtc_flutter/domain/entities/user/user.dart' as userCustom;
 import 'package:webrtc_flutter/ui/screens/login/login_screen.dart';
 
 import '../../../../resources/fonts.gen.dart';
 
-Widget profileDrawer(BuildContext context) {
+Widget profileDrawer(BuildContext context, userCustom.User user) {
   return Drawer(
     child: ListView(
       children: [
-        const DrawerHeader(
+        DrawerHeader(
           child: CircleAvatar(
               backgroundImage: NetworkImage(
-            "https://hoala.vn/upload/img/images/hoa_thanh_luong_11.jpg",
+            user.avatar,
           )),
         ),
         ListTile(
-          title: const Text("Alex xander",
-              style: TextStyle(
-                  color: Colors.black,
+          title: Text(user.name,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                  color: Colors.green,
                   fontSize: 20,
                   fontFamily: FontFamily.sansSerif,
                   fontWeight: FontWeight.w300)),
@@ -25,9 +27,10 @@ Widget profileDrawer(BuildContext context) {
         ),
         ListTile(
           title: const Text("Logout",
+              textAlign: TextAlign.start,
               style: TextStyle(
                   color: Colors.black,
-                  fontSize: 1,
+                  fontSize: 20,
                   fontFamily: FontFamily.sansSerif,
                   fontWeight: FontWeight.w300)),
           trailing: IconButton(
