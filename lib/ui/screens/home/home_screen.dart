@@ -1,10 +1,11 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:webrtc_flutter/injection.dart';
 import 'package:webrtc_flutter/ui/route_item.dart';
-import 'package:webrtc_flutter/ui/screens/call_sample/call_sample.dart';
-import 'package:webrtc_flutter/ui/screens/call_sample/data_channel_sample.dart';
-import 'package:webrtc_flutter/ui/screens/login/login_screen.dart';
+import 'package:webrtc_flutter/ui/screens/home/bloc/home_bloc.dart';
+import 'package:webrtc_flutter/ui/screens/home/components/body.dart';
+import 'package:webrtc_flutter/ui/screens/home/components/profile_drawer.dart';
+import 'package:webrtc_flutter/ui/screens/home/components/topbar.dart';
 
 class HomeScreen extends StatefulWidget {
   @override
@@ -18,130 +19,21 @@ enum DialogDemoAction {
 
 class _HomeScreen extends State<HomeScreen> {
   List<RouteItem> items = [];
-  String _server = '';
-  late SharedPreferences _prefs;
-
-  bool _datachannel = false;
 
   @override
   initState() {
     super.initState();
-    _initData();
-    _initItems();
-  }
-
-  _buildRow(context, item) {
-    return ListBody(children: <Widget>[
-      ListTile(
-        title: Text(item.title),
-        onTap: () => item.push(context),
-        trailing: Icon(Icons.arrow_right),
-      ),
-      Divider()
-    ]);
   }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      home: Scaffold(
-          appBar: AppBar(
-            title: Text('Flutter-WebRTC example'),
-          ),
-          body: Column(
-            children: [
-              ListView.builder(
-                  shrinkWrap: true,
-                  padding: const EdgeInsets.all(0.0),
-                  itemCount: items.length,
-                  itemBuilder: (context, i) {
-                    return _buildRow(context, items[i]);
-                  }),
-              MaterialButton(
-                onPressed: () {
-                  FirebaseAuth.instance.signOut();
-                  Navigator.pushAndRemoveUntil(context,
-                      MaterialPageRoute<void>(builder: (_) => LoginScreen()), (route) => false);
-                },
-                child: const Icon(Icons.logout),
-              )
-            ],
-          )),
-    );
-  }
-
-  _initData() async {
-    _prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _server = /*_prefs.getString('server') ??*/ 'web-rtc-ktor.herokuapp.com';
-    });
-  }
-
-  void showDemoDialog<T>({required BuildContext context, required Widget child}) {
-    showDialog<T>(
-      context: context,
-      builder: (BuildContext context) => child,
-    ).then<void>((T? value) {
-      // The value passed to Navigator.pop() or null.
-      if (value != null) {
-        if (value == DialogDemoAction.connect) {
-          _prefs.setString('server', _server);
-          Navigator.push(
-              context,
-              MaterialPageRoute(
-                  builder: (BuildContext context) =>
-                      _datachannel ? DataChannelSample(host: _server) : CallSample(host: _server)));
-        }
-      }
-    });
-  }
-
-  _showAddressDialog(context) {
-    showDemoDialog<DialogDemoAction>(
-        context: context,
-        child: AlertDialog(
-            title: const Text('Enter server address:'),
-            content: TextField(
-              onChanged: (String text) {
-                setState(() {
-                  _server = text;
-                });
-              },
-              decoration: InputDecoration(
-                hintText: _server,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            actions: <Widget>[
-              TextButton(
-                  child: const Text('CANCEL'),
-                  onPressed: () {
-                    Navigator.of(context, rootNavigator: true).pop(DialogDemoAction.cancel);
-                  }),
-              TextButton(
-                  child: const Text('CONNECT'),
-                  onPressed: () {
-                    Navigator.of(context, rootNavigator: true).pop(DialogDemoAction.connect);
-                  })
-            ]));
-  }
-
-  _initItems() {
-    items = <RouteItem>[
-      RouteItem(
-          title: 'P2P Call Sample',
-          subtitle: 'P2P Call Sample.',
-          push: (BuildContext context) {
-            _datachannel = false;
-            _showAddressDialog(context);
-          }),
-      RouteItem(
-          title: 'Data Channel Sample',
-          subtitle: 'P2P Data Channel.',
-          push: (BuildContext context) {
-            _datachannel = true;
-            _showAddressDialog(context);
-          }),
-    ];
+        home: Scaffold(
+            appBar: topBar(),
+            drawer: profileDrawer(context),
+            body: BlocProvider<HomeBloc>(
+              create: (context) => injector.get(),
+              child: BodyHome(),
+            )));
   }
 }
