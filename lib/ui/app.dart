@@ -1,5 +1,4 @@
 import 'package:easy_localization/easy_localization.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:webrtc_flutter/ui/screens/auth/auth_bloc.dart';
@@ -22,9 +21,6 @@ class _AppState extends State<App> {
 
   @override
   void initState() {
-    getFirebaseMessagingToken().then((value) {
-      debugPrint("FCM Token: $value");
-    });
     super.initState();
   }
 
@@ -62,9 +58,5 @@ class _AppState extends State<App> {
         onGenerateRoute: (_) => MaterialPageRoute<void>(builder: (_) => const SplashScreen()),
       ),
     );
-  }
-
-  Future<String?> getFirebaseMessagingToken() async {
-    return FirebaseMessaging.instance.getToken();
   }
 }

@@ -54,6 +54,7 @@ dependencies:
   # Network
   retrofit: 3.3.1
   dio: ^4.0.6
+  pretty_dio_logger: ^1.2.0-beta-1
   firebase_auth: ^4.2.3
   firebase_core: ^2.4.1
   cloud_firestore: ^4.3.1
@@ -78,7 +79,6 @@ dependencies:
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.2
-  firebase_core: ^2.7.0
 
 dev_dependencies:
   flutter_test:
