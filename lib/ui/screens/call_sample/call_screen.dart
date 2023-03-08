@@ -7,21 +7,21 @@ import 'package:webrtc_flutter/ui/screens/call_sample/Constants.dart';
 import '../../widgets/screen_select_dialog.dart';
 import 'signaling.dart';
 
-class CallSample extends StatefulWidget {
+class CallScreen extends StatefulWidget {
   static String tag = 'call_sample';
   final String host;
-  CallSample({required this.host});
+  CallScreen({required this.host});
 
   @override
-  _CallSampleState createState() => _CallSampleState();
+  _CallScreenState createState() => _CallScreenState();
 }
 
-class _CallSampleState extends State<CallSample> {
+class _CallScreenState extends State<CallScreen> {
   Signaling? _signaling;
   List<dynamic> _peers = [];
   String? _selfId;
-  RTCVideoRenderer _localRenderer = RTCVideoRenderer();
-  RTCVideoRenderer _remoteRenderer = RTCVideoRenderer();
+  final RTCVideoRenderer _localRenderer = RTCVideoRenderer();
+  final RTCVideoRenderer _remoteRenderer = RTCVideoRenderer();
   bool _inCalling = false;
   Session? _session;
   DesktopCapturerSource? selected_source_;
@@ -29,7 +29,7 @@ class _CallSampleState extends State<CallSample> {
   var _enabledCall = false;
 
   // ignore: unused_element
-  _CallSampleState();
+  _CallScreenState();
 
   @override
   initState() {
@@ -214,9 +214,9 @@ class _CallSampleState extends State<CallSample> {
     );
   }
 
-  _invitePeer(BuildContext context, String peerId, bool useScreen) async {
-    if (_signaling != null && peerId != _selfId) {
-      _signaling?.invite(peerId, 'video', useScreen);
+  _invitePeer(BuildContext context, bool useScreen) async {
+    if (_signaling != null) {
+      _signaling?.invite('video', useScreen, [], "");
     }
   }
 
@@ -234,7 +234,7 @@ class _CallSampleState extends State<CallSample> {
 
   _hangUp() {
     if (_session != null) {
-      _signaling?.bye(_session!.sid);
+      _signaling?.bye(_session!.sid, [], '');
     }
   }
 
@@ -292,13 +292,13 @@ class _CallSampleState extends State<CallSample> {
               IconButton(
                 icon: Icon(self ? Icons.close : Icons.videocam,
                     color: self ? Colors.grey : Colors.black),
-                onPressed: () => _invitePeer(context, peer['id'], false),
+                onPressed: () => _invitePeer(context, false),
                 tooltip: 'Video calling',
               ),
               IconButton(
                 icon: Icon(self ? Icons.close : Icons.screen_share,
                     color: self ? Colors.grey : Colors.black),
-                onPressed: () => _invitePeer(context, peer['id'], true),
+                onPressed: () => _invitePeer(context, true),
                 tooltip: 'Screen sharing',
               )
             ])),
@@ -311,16 +311,6 @@ class _CallSampleState extends State<CallSample> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-        appBar: AppBar(
-          title: Text('P2P Call Sample' + (_selfId != null ? ' [Your ID ($_selfId)] ' : '')),
-          actions: <Widget>[
-            IconButton(
-              icon: const Icon(Icons.settings),
-              onPressed: null,
-              tooltip: 'setup',
-            ),
-          ],
-        ),
         floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
         floatingActionButton: _inCalling
             ? SizedBox(
@@ -390,7 +380,7 @@ class _CallSampleState extends State<CallSample> {
                   MaterialButton(
                       onPressed: _enabledCall
                           ? () {
-                              _signaling?.onSessionScreenReady();
+                              _signaling?.onSessionScreenReady(['LIacRUdwEUec0cQNK8AHEMd6GN12']);
                             }
                           : null,
                       color: _enabledCall ? Colors.black : Colors.blueGrey,

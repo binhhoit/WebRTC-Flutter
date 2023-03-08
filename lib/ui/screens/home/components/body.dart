@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:webrtc_flutter/domain/entities/user/user.dart';
+import 'package:webrtc_flutter/ui/screens/call_sample/call_screen.dart';
 import 'package:webrtc_flutter/ui/screens/home/bloc/home_bloc.dart';
 import 'package:webrtc_flutter/ui/screens/home/bloc/home_state.dart';
 
@@ -58,7 +59,12 @@ class _BodyHome extends State<BodyHome> {
         ),
         title: Text(item.name),
         subtitle: const Text("Online"),
-        onTap: () {},
+        onTap: () {
+          Navigator.push(
+              context,
+              MaterialPageRoute<void>(
+                  builder: (_) => CallScreen(host: "web-rtc-ktor.herokuapp.com")));
+        },
         trailing: const Icon(Icons.video_call_outlined),
       ),
       const Divider()
