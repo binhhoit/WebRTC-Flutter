@@ -65,14 +65,14 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyBNCdCFOtnz3xW0w-Fou7cUNBWhcyAJ9A0',
-    appId: '1:174153813964:ios:14df9f7eb0fccf6a29d769',
+    appId: '1:174153813964:ios:e466476d00081a6a29d769',
     messagingSenderId: '174153813964',
     projectId: 'webrtc-e4bbd',
     databaseURL: 'https://webrtc-e4bbd-default-rtdb.asia-southeast1.firebasedatabase.app',
     storageBucket: 'webrtc-e4bbd.appspot.com',
     androidClientId: '174153813964-6ip6ee9blkn1noq4407pbumj0uqt88hq.apps.googleusercontent.com',
-    iosClientId: '174153813964-spdquoft8oigca1bte6qnemv9gef6335.apps.googleusercontent.com',
-    iosBundleId: 'sts.saigon.webrtcFlutter',
+    iosClientId: '174153813964-t08cnfpemmo0jc33arifigmjsriu3phm.apps.googleusercontent.com',
+    iosBundleId: 'com.example.webrtcFlutter',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
