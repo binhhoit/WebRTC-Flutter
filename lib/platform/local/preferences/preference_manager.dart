@@ -5,6 +5,7 @@ import 'package:injectable/injectable.dart';
 class PreferenceManager {
   static const String _accessTokenKey = 'ACCESS_TOKEN';
   static const String _refreshTokenKey = 'REFRESH_TOKEN';
+  static const String _fcmTokenKey = 'FCM_TOKEN';
 
   static const String _boxName = 'app_preference';
 
@@ -33,6 +34,14 @@ class PreferenceManager {
 
   set accessToken(String? value) {
     _box.put(_accessTokenKey, value);
+  }
+
+  String get fcmToken {
+    return _box.get(_fcmTokenKey, defaultValue: "") as String;
+  }
+
+  set fcmToken(String? value) {
+    _box.put(_fcmTokenKey, value);
   }
 
   bool get isLoggedIn => accessToken.isNotEmpty;
