@@ -15,10 +15,12 @@ class BodyHome extends StatefulWidget {
 }
 
 class _BodyHome extends State<BodyHome> {
+  HomeBloc? _bloc;
   var users = <User>[];
 
   @override
   void initState() {
+    _bloc = context.read<HomeBloc>();
     super.initState();
   }
 
@@ -63,7 +65,11 @@ class _BodyHome extends State<BodyHome> {
           Navigator.push(
               context,
               MaterialPageRoute<void>(
-                  builder: (_) => CallScreen(host: "web-rtc-ktor.herokuapp.com")));
+                  builder: (_) => CallScreen(
+                        host: _bloc?.getBaseUrlServer() ?? "",
+                        to: [item],
+                        isRequestCall: true,
+                      )));
         },
         trailing: const Icon(Icons.video_call_outlined),
       ),

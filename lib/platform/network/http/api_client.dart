@@ -2,7 +2,6 @@ import 'package:dio/dio.dart';
 import 'package:injectable/injectable.dart';
 import 'package:retrofit/retrofit.dart';
 import 'package:webrtc_flutter/platform/config/build_config.dart';
-import 'package:webrtc_flutter/platform/model/request/profile_response.dart';
 
 part 'api_client.g.dart';
 

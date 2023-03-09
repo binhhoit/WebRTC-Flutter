@@ -11,6 +11,8 @@ import 'package:webrtc_flutter/ui/screens/home/home_screen.dart';
 import 'package:webrtc_flutter/ui/screens/login/login_screen.dart';
 import 'package:webrtc_flutter/ui/screens/splash/splash_screen.dart';
 
+import '../domain/entities/user/user.dart';
+
 class App extends StatefulWidget {
   App({Key? key}) : super(key: key);
 
@@ -76,7 +78,11 @@ class _AppState extends State<App> {
         break;
       case Event.ACTION_CALL_ACCEPT:
         _navigator.pushAndRemoveUntil(
-            MaterialPageRoute<void>(builder: (_) => CallScreen(host: "web-rtc-ktor.herokuapp.com")),
+            MaterialPageRoute<void>(
+                builder: (_) => CallScreen(
+                    host: "",
+                    to: [User(id: "", email: "", name: "", avatar: "")],
+                    isRequestCall: false)),
             (route) => false);
         Fluttertoast.showToast(
             msg: 'Accept Call}',

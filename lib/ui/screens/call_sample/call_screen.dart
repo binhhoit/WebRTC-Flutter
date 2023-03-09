@@ -2,6 +2,7 @@ import 'dart:core';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
+import 'package:webrtc_flutter/domain/entities/user/user.dart';
 import 'package:webrtc_flutter/ui/screens/call_sample/Constants.dart';
 
 import '../../widgets/screen_select_dialog.dart';
@@ -10,13 +11,16 @@ import 'signaling.dart';
 class CallScreen extends StatefulWidget {
   static String tag = 'call_sample';
   final String host;
-  CallScreen({required this.host});
+  final List<User> to;
+  final bool isRequestCall;
+
+  CallScreen({required this.host, required this.to, required this.isRequestCall});
 
   @override
   _CallScreenState createState() => _CallScreenState();
 }
 
-class _CallScreenState extends State<CallScreen> {
+class _CallScreenState extends State<CallScreen> with SingleTickerProviderStateMixin {
   Signaling? _signaling;
   List<dynamic> _peers = [];
   String? _selfId;
@@ -27,6 +31,7 @@ class _CallScreenState extends State<CallScreen> {
   DesktopCapturerSource? selected_source_;
   bool _waitAccept = false;
   var _enabledCall = false;
+  late AnimationController _animationController;
 
   // ignore: unused_element
   _CallScreenState();
@@ -36,6 +41,8 @@ class _CallScreenState extends State<CallScreen> {
     super.initState();
     initRenderers();
     _connect(context);
+    _animationController = AnimationController(vsync: this, duration: Duration(seconds: 1));
+    _animationController.repeat(reverse: true);
   }
 
   initRenderers() async {
@@ -47,6 +54,7 @@ class _CallScreenState extends State<CallScreen> {
   deactivate() {
     super.deactivate();
     _signaling?.close();
+    _animationController.dispose();
     _localRenderer.dispose();
     _remoteRenderer.dispose();
   }
@@ -308,6 +316,72 @@ class _CallScreenState extends State<CallScreen> {
     ]);
   }
 
+  _waitingCall() {
+    var callUser = widget.to.first;
+
+    return Expanded(
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          Positioned.fill(
+            child: Image.asset(
+              "assets/images/bg_call.png",
+              gaplessPlayback: true,
+              alignment: Alignment.center,
+              scale: 1.2,
+            ),
+          ),
+          Column(
+            children: [
+              const SizedBox(height: 150),
+              SizedBox(
+                height: 150,
+                width: 150,
+                child: CircleAvatar(
+                    backgroundImage: NetworkImage(
+                  callUser.avatar,
+                )),
+              ),
+              const SizedBox(height: 30),
+              Column(
+                children: [
+                  Text(
+                    callUser.name.toUpperCase(),
+                    style: const TextStyle(
+                        color: Colors.white, fontWeight: FontWeight.bold, fontSize: 25),
+                  ),
+                  const SizedBox(height: 10),
+                  FadeTransition(
+                    opacity: _animationController,
+                    child: const Text("CALLING",
+                        style: TextStyle(
+                            color: Colors.white, fontWeight: FontWeight.w300, fontSize: 20)),
+                  )
+                ],
+              ),
+              const Spacer(),
+              InkWell(
+                onTap: () {
+                  Navigator.pop(context);
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(10),
+                  child: Image.asset(
+                    'assets/images/end_call.png',
+                    width: 70,
+                    height: 70,
+                    fit: BoxFit.cover,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 60),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -370,24 +444,7 @@ class _CallScreenState extends State<CallScreen> {
               })
             : Column(
                 children: [
-                  ListView.builder(
-                      shrinkWrap: true,
-                      padding: const EdgeInsets.all(0.0),
-                      itemCount: (_peers != null ? _peers.length : 0),
-                      itemBuilder: (context, i) {
-                        return _buildRow(context, _peers[i]);
-                      }),
-                  MaterialButton(
-                      onPressed: _enabledCall
-                          ? () {
-                              _signaling?.onSessionScreenReady(['LIacRUdwEUec0cQNK8AHEMd6GN12']);
-                            }
-                          : null,
-                      color: _enabledCall ? Colors.black : Colors.blueGrey,
-                      child: const Text(
-                        "Create Call / Answer",
-                        style: TextStyle(color: Colors.white),
-                      ))
+                  if (widget.isRequestCall) _waitingCall(),
                 ],
               ));
   }

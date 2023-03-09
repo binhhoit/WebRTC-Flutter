@@ -69,17 +69,9 @@ class Signaling {
   String get sdpSemantics => 'unified-plan';
   String? offer;
 
-  Map<String, dynamic> _iceServers = {
+  final Map<String, dynamic> _iceServers = {
     'iceServers': [
       {'url': 'stun:stun.l.google.com:19302'},
-      /*
-       * turn server configuration example.
-      {
-        'url': 'turn:123.45.67.89:3478',
-        'username': 'change_to_real_user',
-        'credential': 'change_to_real_secret'
-      },
-      */
     ]
   };
 
@@ -185,8 +177,9 @@ class Signaling {
   }
 
   //TODO: handle state connect server
-  Future<void> handleStateMessage(String text) async {
-    var state = _getSeparatedMessage(text);
+  Future<void> handleStateMessage(text) async {
+    var status = text['data'];
+    var state = _getSeparatedMessage(status);
     if (state == WebRTCSessionState.Active.name) {
       onWebRTCSessionState?.call(WebRTCSessionState.Active);
     } else if (state == WebRTCSessionState.Creating.name) {
@@ -225,15 +218,16 @@ class Signaling {
     }
   }
 
-  void onMessage(String message) async {
-    if (message.toLowerCase().startsWith(SignalingCommand.STATE.name.toLowerCase())) {
+  void onMessage(message) async {
+    var status = message['data'];
+    if (status.toLowerCase().startsWith(SignalingCommand.STATE.name.toLowerCase())) {
       handleStateMessage(message);
-    } else if (message.toLowerCase().startsWith(SignalingCommand.OFFER.name.toLowerCase())) {
-      handleSignalingCommand(SignalingCommand.OFFER, message);
-    } else if (message.toLowerCase().startsWith(SignalingCommand.ANSWER.name.toLowerCase())) {
-      handleSignalingCommand(SignalingCommand.ANSWER, message);
-    } else if (message.toLowerCase().startsWith(SignalingCommand.ICE.name.toLowerCase())) {
-      handleSignalingCommand(SignalingCommand.ICE, message);
+    } else if (status.toLowerCase().startsWith(SignalingCommand.OFFER.name.toLowerCase())) {
+      handleSignalingCommand(SignalingCommand.OFFER, status);
+    } else if (status.toLowerCase().startsWith(SignalingCommand.ANSWER.name.toLowerCase())) {
+      handleSignalingCommand(SignalingCommand.ANSWER, status);
+    } else if (status.toLowerCase().startsWith(SignalingCommand.ICE.name.toLowerCase())) {
+      handleSignalingCommand(SignalingCommand.ICE, status);
     }
 
     /*
@@ -387,7 +381,7 @@ class Signaling {
   }
 
   Future<void> connect() async {
-    var url = 'https://$_host/rtc?uid$_selfId';
+    var url = '$_host/rtc?uid=$_selfId';
     _socket = SimpleWebSocket(url);
 
     print('connect to $url');

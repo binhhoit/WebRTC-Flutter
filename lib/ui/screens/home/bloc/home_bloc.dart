@@ -3,15 +3,20 @@ import 'package:firebase_auth/firebase_auth.dart' as fireAuth;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
 import 'package:webrtc_flutter/domain/entities/user/user.dart';
+import 'package:webrtc_flutter/platform/config/build_config.dart';
 import 'package:webrtc_flutter/ui/screens/home/bloc/home_state.dart';
 
 @injectable
 class HomeBloc extends Cubit<HomeState> {
-  HomeBloc() : super(const HomeState.init()) {
+  BuildConfig buildConfig;
+
+  HomeBloc(this.buildConfig) : super(const HomeState.init()) {
     getListUser();
   }
 
   final databaseReference = FirebaseFirestore.instance;
+
+  String getBaseUrlServer() => buildConfig.baseUrl;
 
   Future<void> getListUser() async {
     emit(const HomeState.loading());
