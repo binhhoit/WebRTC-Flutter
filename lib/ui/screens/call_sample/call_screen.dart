@@ -85,6 +85,11 @@ class _CallScreenState extends State<CallScreen> with SingleTickerProviderStateM
           case WebRTCSessionState.Ready:
             print(state);
             _enabledCall = true;
+            //auto sent offer
+            if (widget.isRequestCall) {
+              var id = widget.to.map((e) => e.id);
+              _signaling?.onSessionScreenReady(id.toList());
+            }
             break;
           case WebRTCSessionState.Creating:
             print(state);
@@ -318,7 +323,6 @@ class _CallScreenState extends State<CallScreen> with SingleTickerProviderStateM
 
   _waitingCall() {
     var callUser = widget.to.first;
-
     return Expanded(
       child: Stack(
         fit: StackFit.expand,
@@ -445,6 +449,10 @@ class _CallScreenState extends State<CallScreen> with SingleTickerProviderStateM
             : Column(
                 children: [
                   if (widget.isRequestCall) _waitingCall(),
+                  if (!widget.isRequestCall)
+                    const Center(
+                      child: CircularProgressIndicator(),
+                    )
                 ],
               ));
   }

@@ -177,9 +177,9 @@ class Signaling {
   }
 
   //TODO: handle state connect server
-  Future<void> handleStateMessage(text) async {
-    var status = text['data'];
-    var state = _getSeparatedMessage(status);
+  Future<void> handleStateMessage(rawData) async {
+    var data = rawData['data'];
+    var state = _getSeparatedMessage(data);
     if (state == WebRTCSessionState.Active.name) {
       onWebRTCSessionState?.call(WebRTCSessionState.Active);
     } else if (state == WebRTCSessionState.Creating.name) {
@@ -223,11 +223,11 @@ class Signaling {
     if (status.toLowerCase().startsWith(SignalingCommand.STATE.name.toLowerCase())) {
       handleStateMessage(message);
     } else if (status.toLowerCase().startsWith(SignalingCommand.OFFER.name.toLowerCase())) {
-      handleSignalingCommand(SignalingCommand.OFFER, status);
+      handleSignalingCommand(SignalingCommand.OFFER, message);
     } else if (status.toLowerCase().startsWith(SignalingCommand.ANSWER.name.toLowerCase())) {
-      handleSignalingCommand(SignalingCommand.ANSWER, status);
+      handleSignalingCommand(SignalingCommand.ANSWER, message);
     } else if (status.toLowerCase().startsWith(SignalingCommand.ICE.name.toLowerCase())) {
-      handleSignalingCommand(SignalingCommand.ICE, status);
+      handleSignalingCommand(SignalingCommand.ICE, message);
     }
 
     /*
