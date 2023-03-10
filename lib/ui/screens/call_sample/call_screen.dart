@@ -2,7 +2,9 @@ import 'dart:core';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 import 'package:webrtc_flutter/domain/entities/user/user.dart';
+import 'package:webrtc_flutter/platform/local/preferences/preference_manager.dart';
 import 'package:webrtc_flutter/ui/screens/call_sample/Constants.dart';
 
 import '../../widgets/screen_select_dialog.dart';
@@ -13,8 +15,10 @@ class CallScreen extends StatefulWidget {
   final String host;
   final List<User> to;
   final bool isRequestCall;
+  final String? session;
 
-  CallScreen({required this.host, required this.to, required this.isRequestCall});
+  CallScreen(
+      {required this.host, required this.to, required this.session, required this.isRequestCall});
 
   @override
   _CallScreenState createState() => _CallScreenState();
@@ -88,7 +92,12 @@ class _CallScreenState extends State<CallScreen> with SingleTickerProviderStateM
             //auto sent offer
             if (widget.isRequestCall) {
               var id = widget.to.map((e) => e.id);
-              _signaling?.onSessionScreenReady(id.toList());
+              var userCall = PreferenceManager.instance.currentUser;
+              _signaling?.onSessionScreenReady(id.toList(),
+                  nameCaller: userCall.name, avatar: userCall.avatar);
+            } else {
+              _accept();
+              _inCalling = true;
             }
             break;
           case WebRTCSessionState.Creating:
@@ -206,31 +215,12 @@ class _CallScreenState extends State<CallScreen> with SingleTickerProviderStateM
     );
   }
 
-  Future<bool?> _showInvateDialog() {
-    return showDialog<bool?>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text("title"),
-          content: Text("waiting"),
-          actions: <Widget>[
-            TextButton(
-              child: Text("cancel"),
-              onPressed: () {
-                Navigator.of(context).pop(false);
-                _hangUp();
-              },
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  _invitePeer(BuildContext context, bool useScreen) async {
-    if (_signaling != null) {
-      _signaling?.invite('video', useScreen, [], "");
-    }
+  _showInvateDialog() {
+    Fluttertoast.showToast(
+        msg: 'Waiting Connect',
+        backgroundColor: Colors.green,
+        textColor: Colors.white,
+        fontSize: 16);
   }
 
   _accept() {
@@ -291,97 +281,65 @@ class _CallScreenState extends State<CallScreen> with SingleTickerProviderStateM
     _signaling?.muteMic();
   }
 
-  _buildRow(context, peer) {
-    var self = (peer['id'] == _selfId);
-    return ListBody(children: <Widget>[
-      ListTile(
-        title: Text(self
-            ? peer['name'] + ', ID: ${peer['id']} ' + ' [Your self]'
-            : peer['name'] + ', ID: ${peer['id']} '),
-        onTap: null,
-        trailing: SizedBox(
-            width: 100.0,
-            child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: <Widget>[
-              IconButton(
-                icon: Icon(self ? Icons.close : Icons.videocam,
-                    color: self ? Colors.grey : Colors.black),
-                onPressed: () => _invitePeer(context, false),
-                tooltip: 'Video calling',
-              ),
-              IconButton(
-                icon: Icon(self ? Icons.close : Icons.screen_share,
-                    color: self ? Colors.grey : Colors.black),
-                onPressed: () => _invitePeer(context, true),
-                tooltip: 'Screen sharing',
-              )
-            ])),
-        subtitle: Text('[' + peer['user_agent'] + ']'),
-      ),
-      Divider()
-    ]);
-  }
-
   _waitingCall() {
     var callUser = widget.to.first;
     return Expanded(
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          Positioned.fill(
-            child: Image.asset(
-              "assets/images/bg_call.png",
-              gaplessPlayback: true,
-              alignment: Alignment.center,
-              scale: 1.2,
-            ),
+      child: Container(
+        width: MediaQuery.of(context).size.width,
+        height: MediaQuery.of(context).size.height,
+        decoration: const BoxDecoration(
+          image: DecorationImage(
+            image: AssetImage("assets/images/bg_call.png"),
+            fit: BoxFit.cover,
           ),
-          Column(
-            children: [
-              const SizedBox(height: 150),
-              SizedBox(
-                height: 150,
-                width: 150,
-                child: CircleAvatar(
-                    backgroundImage: NetworkImage(
-                  callUser.avatar,
-                )),
-              ),
-              const SizedBox(height: 30),
-              Column(
-                children: [
-                  Text(
-                    callUser.name.toUpperCase(),
-                    style: const TextStyle(
-                        color: Colors.white, fontWeight: FontWeight.bold, fontSize: 25),
-                  ),
-                  const SizedBox(height: 10),
-                  FadeTransition(
-                    opacity: _animationController,
-                    child: const Text("CALLING",
-                        style: TextStyle(
-                            color: Colors.white, fontWeight: FontWeight.w300, fontSize: 20)),
-                  )
-                ],
-              ),
-              const Spacer(),
-              InkWell(
-                onTap: () {
-                  Navigator.pop(context);
-                },
-                child: Container(
-                  padding: const EdgeInsets.all(10),
-                  child: Image.asset(
-                    'assets/images/end_call.png',
-                    width: 70,
-                    height: 70,
-                    fit: BoxFit.cover,
-                  ),
+        ),
+        child: Column(
+          children: [
+            const SizedBox(height: 150),
+            SizedBox(
+              height: 150,
+              width: 150,
+              child: CircleAvatar(
+                  backgroundImage: NetworkImage(
+                callUser.avatar,
+              )),
+            ),
+            const SizedBox(height: 30),
+            Column(
+              children: [
+                Text(
+                  callUser.name.toUpperCase(),
+                  style: const TextStyle(
+                      color: Colors.white, fontWeight: FontWeight.bold, fontSize: 25),
+                ),
+                const SizedBox(height: 10),
+                FadeTransition(
+                  opacity: _animationController,
+                  child: const Text("CALLING",
+                      style: TextStyle(
+                          color: Colors.white, fontWeight: FontWeight.w300, fontSize: 20)),
+                )
+              ],
+            ),
+            const Spacer(),
+            InkWell(
+              onTap: () {
+                _hangUp();
+                Navigator.pop(context);
+              },
+              child: Container(
+                padding: const EdgeInsets.all(10),
+                child: Image.asset(
+                  'assets/images/end_call.png',
+                  width: 70,
+                  height: 70,
+                  fit: BoxFit.cover,
                 ),
               ),
-              const SizedBox(height: 60),
-            ],
-          ),
-        ],
+            ),
+            const SizedBox(height: 60),
+          ],
+        ),
       ),
     );
   }
@@ -447,6 +405,7 @@ class _CallScreenState extends State<CallScreen> with SingleTickerProviderStateM
                 );
               })
             : Column(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   if (widget.isRequestCall) _waitingCall(),
                   if (!widget.isRequestCall)

@@ -14,10 +14,10 @@ abstract class NetworkModule {
     ConnectivityInterceptor connectivityInterceptor,
   ) {
     final logger = PrettyDioLogger(
-      requestHeader: false,
+      requestHeader: true,
       requestBody: true,
-      responseBody: false,
-      responseHeader: false,
+      responseBody: true,
+      responseHeader: true,
       compact: false,
     );
     var dio = Dio(BaseOptions(connectTimeout: 10000, receiveTimeout: 10000));

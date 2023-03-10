@@ -41,29 +41,28 @@ class _AppState extends State<App> {
       path: 'assets/translations',
       fallbackLocale: const Locale('en', 'US'),
       child: MaterialApp(
-        navigatorKey: _navigatorKey,
-        localizationsDelegates: context.localizationDelegates,
-        supportedLocales: context.supportedLocales,
-        locale: context.locale,
-        builder: (context, child) {
-          return BlocListener<AuthenticationBloc, AuthenticationState>(
-            listener: (context, state) {
-              state.when(
-                  unknown: () {},
-                  unauthenticated: () {
-                    _navigator.pushAndRemoveUntil(
-                        MaterialPageRoute<void>(builder: (_) => LoginScreen()), (route) => false);
-                  },
-                  authenticated: () {
-                    _navigator.pushAndRemoveUntil(
-                        MaterialPageRoute<void>(builder: (_) => HomeScreen()), (route) => false);
-                  });
-            },
-            child: child,
-          );
-        },
-        onGenerateRoute: (_) => MaterialPageRoute<void>(builder: (_) => const SplashScreen()),
-      ),
+          navigatorKey: _navigatorKey,
+          localizationsDelegates: context.localizationDelegates,
+          supportedLocales: context.supportedLocales,
+          locale: context.locale,
+          builder: (context, child) {
+            return BlocListener<AuthenticationBloc, AuthenticationState>(
+              listener: (context, state) {
+                state.when(
+                    unknown: () {},
+                    unauthenticated: () {
+                      _navigator.pushAndRemoveUntil(
+                          MaterialPageRoute<void>(builder: (_) => LoginScreen()), (route) => false);
+                    },
+                    authenticated: () {
+                      _navigator.pushAndRemoveUntil(
+                          MaterialPageRoute<void>(builder: (_) => HomeScreen()), (route) => false);
+                    });
+              },
+              child: child,
+            );
+          },
+          onGenerateRoute: (_) => MaterialPageRoute<void>(builder: (_) => const SplashScreen())),
     );
   }
 
@@ -80,9 +79,17 @@ class _AppState extends State<App> {
         _navigator.pushAndRemoveUntil(
             MaterialPageRoute<void>(
                 builder: (_) => CallScreen(
-                    host: "",
-                    to: [User(id: "", email: "", name: "", avatar: "")],
-                    isRequestCall: false)),
+                      host: "https://web-rtc-ktor.herokuapp.com/",
+                      to: [
+                        User(
+                            id: "Hbx4MrsV7haempcr7JRVbeQh1lD3",
+                            email: "binh@gmail.com",
+                            name: "Binh",
+                            avatar: "avc")
+                      ],
+                      session: '1111',
+                      isRequestCall: false,
+                    )),
             (route) => false);
         Fluttertoast.showToast(
             msg: 'Accept Call}',

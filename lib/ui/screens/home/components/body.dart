@@ -68,6 +68,7 @@ class _BodyHome extends State<BodyHome> {
                   builder: (_) => CallScreen(
                         host: _bloc?.getBaseUrlServer() ?? "",
                         to: [item],
+                        session: null,
                         isRequestCall: true,
                       )));
         },

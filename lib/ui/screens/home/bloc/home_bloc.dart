@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
 import 'package:webrtc_flutter/domain/entities/user/user.dart';
 import 'package:webrtc_flutter/platform/config/build_config.dart';
+import 'package:webrtc_flutter/platform/local/preferences/preference_manager.dart';
 import 'package:webrtc_flutter/ui/screens/home/bloc/home_state.dart';
 
 @injectable
@@ -27,11 +28,13 @@ class HomeBloc extends Cubit<HomeState> {
         for (var doc in snapshot.docs) {
           final user = User.fromJson(doc.data());
           if (user.id == id) {
+            PreferenceManager.instance.currentUser = user;
             emit(HomeState.currentUser(user));
           } else {
             users.add(user);
           }
         }
+
         emit(HomeState.users(users));
       }, onError: (e) {
         print(e);

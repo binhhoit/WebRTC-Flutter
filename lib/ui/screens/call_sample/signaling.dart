@@ -130,7 +130,8 @@ class Signaling {
     }
   }
 
-  void invite(String media, bool useScreen, List<String> to, String from) async {
+  void invite(
+      String media, bool useScreen, List<String> to, String from, nameCaller, avatar) async {
     var peerId = randomNumeric(12);
     var sessionId = '$_selfId-$peerId';
     Session session = await _createSession(null,
@@ -139,7 +140,7 @@ class Signaling {
     if (media == 'data') {
       _createDataChannel(session);
     }
-    _createOffer(session, media, to, from);
+    _createOffer(session, media, to, from, nameCaller, avatar);
     onCallStateChange?.call(session, CallState.CallStateNew);
     onCallStateChange?.call(session, CallState.CallStateInvite);
   }
@@ -600,12 +601,14 @@ class Signaling {
     _addDataChannel(session, channel);
   }
 
-  Future<void> _createOffer(Session session, String media, List<String> to, String from) async {
+  Future<void> _createOffer(
+      Session session, String media, List<String> to, String from, nameCaller, avatar) async {
     try {
       RTCSessionDescription s =
           await session.pc!.createOffer(media == 'data' ? _dcConstraints : {});
       await session.pc!.setLocalDescription(_fixSdp(s));
-      _send(SignalingCommand.OFFER.name, s.sdp, to, from, session.sid);
+      _send(SignalingCommand.OFFER.name, s.sdp, to, from, session.sid,
+          nameCaller: nameCaller, avatar: avatar);
     } catch (e) {
       print(e.toString());
     }
@@ -628,12 +631,14 @@ class Signaling {
     }
   }
 
-  _send(event, data, to, from, sessionId) {
+  _send(event, data, to, from, sessionId, {nameCaller, avatar}) {
     var request = Map();
     request["sessionId"] = sessionId;
     request["data"] = "$event $data";
     request["to"] = to;
     request["from"] = from;
+    request["nameCaller"] = nameCaller;
+    request["avatar"] = avatar;
 
     print("[sendCommand] -->${_encoder.convert(request)}");
     _socket?.send(_encoder.convert(request));
@@ -684,14 +689,14 @@ class Signaling {
     return text.split(' ').skip(1).join(' ');
   }
 
-  Future<void> onSessionScreenReady(List<String> to) async {
+  Future<void> onSessionScreenReady(List<String> to, {nameCaller, avatar}) async {
     if (offer != null) {
       var peerId = '1';
       var sessionId = _selfId + '-' + peerId;
       accept(sessionId);
       print("--------accept--------");
     } else {
-      invite('video', false, to, _selfId);
+      invite('video', false, to, _selfId, nameCaller, avatar);
       print("--------invite--------");
     }
   }
