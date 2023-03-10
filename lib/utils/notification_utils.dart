@@ -6,12 +6,10 @@
 // import 'package:flutter/material.dart';
 //
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_callkit_incoming/entities/android_params.dart';
 import 'package:flutter_callkit_incoming/entities/call_kit_params.dart';
 import 'package:flutter_callkit_incoming/entities/ios_params.dart';
 import 'package:flutter_callkit_incoming/flutter_callkit_incoming.dart';
-import 'package:uuid/uuid.dart';
 
 class NotificationUtils {
   static Future<void> showCallkitIncoming(RemoteMessage message) async {
@@ -24,7 +22,7 @@ class NotificationUtils {
       duration: 30000,
       textAccept: 'Accept',
       textDecline: 'Decline',
-      extra: <String, dynamic>{'sessionId': '${message.data['sessionId']}'},
+      extra: message.data,
       android: const AndroidParams(
         actionColor: '#FF5722',
         isCustomNotification: true,

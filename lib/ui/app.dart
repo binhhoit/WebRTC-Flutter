@@ -10,6 +10,7 @@ import 'package:webrtc_flutter/ui/screens/call_sample/call_screen.dart';
 import 'package:webrtc_flutter/ui/screens/home/home_screen.dart';
 import 'package:webrtc_flutter/ui/screens/login/login_screen.dart';
 import 'package:webrtc_flutter/ui/screens/splash/splash_screen.dart';
+import 'package:webrtc_flutter/utils/string_ext.dart';
 
 import '../domain/entities/user/user.dart';
 
@@ -87,7 +88,8 @@ class _AppState extends State<App> {
                             name: "Binh",
                             avatar: "avc")
                       ],
-                      session: '1111',
+                      session: event.body['extra']['sessionId'],
+                      offer: decompress(event?.body['extra']['offer_message']),
                       isRequestCall: false,
                     )),
             (route) => false);

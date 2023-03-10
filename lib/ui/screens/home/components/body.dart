@@ -69,6 +69,7 @@ class _BodyHome extends State<BodyHome> {
                         host: _bloc?.getBaseUrlServer() ?? "",
                         to: [item],
                         session: null,
+                        offer: null,
                         isRequestCall: true,
                       )));
         },

@@ -16,9 +16,14 @@ class CallScreen extends StatefulWidget {
   final List<User> to;
   final bool isRequestCall;
   final String? session;
+  final String? offer;
 
   CallScreen(
-      {required this.host, required this.to, required this.session, required this.isRequestCall});
+      {required this.host,
+      required this.to,
+      required this.session,
+      required this.offer,
+      required this.isRequestCall});
 
   @override
   _CallScreenState createState() => _CallScreenState();
@@ -28,13 +33,12 @@ class _CallScreenState extends State<CallScreen> with SingleTickerProviderStateM
   Signaling? _signaling;
   List<dynamic> _peers = [];
   String? _selfId;
-  final RTCVideoRenderer _localRenderer = RTCVideoRenderer();
-  final RTCVideoRenderer _remoteRenderer = RTCVideoRenderer();
+  RTCVideoRenderer _localRenderer = RTCVideoRenderer();
+  RTCVideoRenderer _remoteRenderer = RTCVideoRenderer();
   bool _inCalling = false;
   Session? _session;
   DesktopCapturerSource? selected_source_;
   bool _waitAccept = false;
-  var _enabledCall = false;
   late AnimationController _animationController;
 
   // ignore: unused_element
@@ -79,41 +83,43 @@ class _CallScreenState extends State<CallScreen> with SingleTickerProviderStateM
       }
     };
 
-    _signaling?.onWebRTCSessionState = (WebRTCSessionState state) {
-      setState(() {
-        switch (state) {
-          case WebRTCSessionState.Active:
-            print(state);
-            _enabledCall = false;
-            break;
-          case WebRTCSessionState.Ready:
-            print(state);
-            _enabledCall = true;
-            //auto sent offer
-            if (widget.isRequestCall) {
-              var id = widget.to.map((e) => e.id);
-              var userCall = PreferenceManager.instance.currentUser;
-              _signaling?.onSessionScreenReady(id.toList(),
-                  nameCaller: userCall.name, avatar: userCall.avatar);
-            } else {
-              _accept();
-              _inCalling = true;
-            }
-            break;
-          case WebRTCSessionState.Creating:
-            print(state);
-            _enabledCall = true;
-            break;
-          case WebRTCSessionState.Impossible:
-            print(state);
-            _enabledCall = false;
-            break;
-          case WebRTCSessionState.Offline:
-            print(state);
-            _enabledCall = false;
-            break;
-        }
-      });
+    _signaling?.onWebRTCSessionState = (WebRTCSessionState state) async {
+      switch (state) {
+        case WebRTCSessionState.Active:
+          print(state);
+          setState(() {
+            _inCalling = true;
+          });
+          break;
+        case WebRTCSessionState.Ready:
+          print(state);
+          //auto sent offer
+          if (widget.isRequestCall) {
+            var id = widget.to.map((e) => e.id);
+            var userCall = PreferenceManager.instance.currentUser;
+            _signaling?.onSessionScreenReady(id.toList(),
+                nameCaller: userCall.name, avatar: userCall.avatar);
+          } else {
+            await _signaling?.handleSignalingCommand(SignalingCommand.OFFER, widget.offer ?? '',
+                sessionId: widget.session);
+            _accept();
+          }
+          break;
+        case WebRTCSessionState.Creating:
+          print(state);
+          /*if (!widget.isRequestCall) {
+            await _signaling?.handleSignalingCommand(SignalingCommand.OFFER, widget.offer ?? '',
+                sessionId: widget.session);
+            _accept();
+          }*/
+          break;
+        case WebRTCSessionState.Impossible:
+          print(state);
+          break;
+        case WebRTCSessionState.Offline:
+          print(state);
+          break;
+      }
     };
 
     _signaling?.onCallStateChange = (Session session, CallState state) async {
@@ -124,7 +130,7 @@ class _CallScreenState extends State<CallScreen> with SingleTickerProviderStateM
           });
           break;
         case CallState.CallStateRinging:
-          bool? accept = await _showAcceptDialog();
+          /*bool? accept = await _showAcceptDialog();
           if (accept!) {
             _accept();
             setState(() {
@@ -132,7 +138,10 @@ class _CallScreenState extends State<CallScreen> with SingleTickerProviderStateM
             });
           } else {
             _reject();
-          }
+          }*/
+          setState(() {
+            _inCalling = true;
+          });
           break;
         case CallState.CallStateBye:
           if (_waitAccept) {
@@ -152,10 +161,10 @@ class _CallScreenState extends State<CallScreen> with SingleTickerProviderStateM
           _showInvateDialog();
           break;
         case CallState.CallStateConnected:
-          if (_waitAccept) {
+          /* if (_waitAccept) {
             _waitAccept = false;
             Navigator.of(context).pop(false);
-          }
+          }*/
           setState(() {
             _inCalling = true;
           });
@@ -179,7 +188,7 @@ class _CallScreenState extends State<CallScreen> with SingleTickerProviderStateM
 
     _signaling?.onAddRemoteStream = ((_, stream) {
       _remoteRenderer.srcObject = stream;
-      setState(() {});
+      if (mounted) setState(() {});
     });
 
     _signaling?.onRemoveRemoteStream = ((_, stream) {
@@ -239,6 +248,7 @@ class _CallScreenState extends State<CallScreen> with SingleTickerProviderStateM
     if (_session != null) {
       _signaling?.bye(_session!.sid, [], '');
     }
+    Navigator.of(context).pop(false);
   }
 
   _switchCamera() {
@@ -325,7 +335,6 @@ class _CallScreenState extends State<CallScreen> with SingleTickerProviderStateM
             InkWell(
               onTap: () {
                 _hangUp();
-                Navigator.pop(context);
               },
               child: Container(
                 padding: const EdgeInsets.all(10),

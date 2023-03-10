@@ -195,23 +195,23 @@ class Signaling {
   }
 
   //TODO: handle sent event to server
-  void handleSignalingCommand(SignalingCommand command, String text) {
+  Future<void> handleSignalingCommand(SignalingCommand command, String text, {sessionId}) async {
     var value = _getSeparatedMessage(text);
     print("received signaling: $command $value");
     switch (command) {
       case SignalingCommand.OFFER:
         {
-          handleOffer(value);
+          await handleOffer(value, sessionId);
         }
         break;
       case SignalingCommand.ANSWER:
         {
-          handleAnswer(value);
+          handleAnswer(value, sessionId);
         }
         break;
       case SignalingCommand.ICE:
         {
-          handleIce(value);
+          handleIce(value, sessionId);
         }
         break;
       default:
@@ -221,14 +221,15 @@ class Signaling {
 
   void onMessage(message) async {
     var status = message['data'];
+    var sessionId = message['sessionId'];
     if (status.toLowerCase().startsWith(SignalingCommand.STATE.name.toLowerCase())) {
       handleStateMessage(message);
     } else if (status.toLowerCase().startsWith(SignalingCommand.OFFER.name.toLowerCase())) {
-      handleSignalingCommand(SignalingCommand.OFFER, message);
+      handleSignalingCommand(SignalingCommand.OFFER, status);
     } else if (status.toLowerCase().startsWith(SignalingCommand.ANSWER.name.toLowerCase())) {
-      handleSignalingCommand(SignalingCommand.ANSWER, message);
+      handleSignalingCommand(SignalingCommand.ANSWER, status, sessionId: sessionId);
     } else if (status.toLowerCase().startsWith(SignalingCommand.ICE.name.toLowerCase())) {
-      handleSignalingCommand(SignalingCommand.ICE, message);
+      handleSignalingCommand(SignalingCommand.ICE, status, sessionId: sessionId);
     }
 
     /*
@@ -328,13 +329,12 @@ class Signaling {
     }*/
   }
 
-  Future<void> handleOffer(String value) async {
+  Future<void> handleOffer(String value, String sessionId) async {
     print("[SDP] handle offer: $value");
     offer = value;
-    var sessionId = "1";
     var session = _sessions[sessionId];
     var newSession = await _createSession(session,
-        peerId: '1', sessionId: sessionId, media: 'video', screenSharing: false);
+        peerId: randomNumeric(12), sessionId: sessionId, media: 'video', screenSharing: false);
     _sessions[sessionId] = newSession;
     await newSession.pc
         ?.setRemoteDescription(RTCSessionDescription(value.mungeCodecs(), Type.OFFER.name));
@@ -349,20 +349,17 @@ class Signaling {
     onCallStateChange?.call(newSession, CallState.CallStateRinging);
   }
 
-  void handleAnswer(String sdp) {
+  void handleAnswer(String sdp, String sessionId) {
     print("[SDP] handle answer: $sdp");
     //Note Get Map Data [sessonID sdp]
-    var sessionId = '';
     var session = _sessions[sessionId];
     session?.pc?.setRemoteDescription(
         RTCSessionDescription(sdp.mungeCodecs(), Type.ANSWER.name.toLowerCase()));
     onCallStateChange?.call(session!, CallState.CallStateConnected);
   }
 
-  Future<void> handleIce(String iceMessage) async {
+  Future<void> handleIce(String iceMessage, String sessionId) async {
     try {
-      var peerId = '1';
-      var sessionId = _selfId + '-' + peerId;
       var session = _sessions[sessionId];
       var iceArray = iceMessage.split(ICE_SEPARATOR);
       RTCIceCandidate candidate = RTCIceCandidate(iceArray[2], iceArray[0], int.parse(iceArray[1]));
@@ -373,7 +370,7 @@ class Signaling {
           session.remoteCandidates.add(candidate);
         }
       } else {
-        _sessions[sessionId] = Session(pid: peerId, sid: sessionId)
+        _sessions[sessionId] = Session(pid: _selfId, sid: sessionId)
           ..remoteCandidates.add(candidate);
       }
     } catch (e) {
