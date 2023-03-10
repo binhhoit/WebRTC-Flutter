@@ -15,7 +15,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreen extends State<HomeScreen> {
   List<RouteItem> items = [];
-  User currentUser = const User(id: "id", avatar: "avatar", email: "email", name: "name");
+  User currentUser = User(id: "id", avatar: "avatar", email: "email", name: "name");
 
   @override
   initState() {

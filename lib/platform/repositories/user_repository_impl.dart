@@ -2,19 +2,22 @@ import 'package:firebase_auth/firebase_auth.dart' as firebase;
 import 'package:injectable/injectable.dart';
 import 'package:webrtc_flutter/domain/repositories/user_repository.dart';
 import 'package:webrtc_flutter/platform/helpers/handle_networt_mixin.dart';
-import 'package:webrtc_flutter/platform/network/http/user_api_client.dart';
+import 'package:webrtc_flutter/platform/local/preferences/preference_manager.dart';
+import 'package:webrtc_flutter/platform/network/http/api_client.dart';
 
 @Injectable(as: UserRepository)
 class UserRepositoryImpl extends UserRepository with HandleNetworkMixin {
-  final UserApiClient userApiClient;
+  final ApiClient apiClient;
 
-  UserRepositoryImpl(this.userApiClient);
+  UserRepositoryImpl(this.apiClient);
 
   @override
   Future<bool> loginWithGmail(String email, String password) async {
     try {
       firebase.UserCredential userCredential = await firebase.FirebaseAuth.instance
           .signInWithEmailAndPassword(email: email, password: password);
+      var token = await userCredential.user?.getIdToken();
+      PreferenceManager.instance.accessToken = token ?? '';
       print(userCredential);
       return userCredential.user != null;
     } on firebase.FirebaseAuthException catch (e) {

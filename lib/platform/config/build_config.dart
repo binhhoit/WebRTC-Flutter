@@ -7,17 +7,17 @@ abstract class BuildConfig {
 @Injectable(as: BuildConfig, env: [Environment.dev])
 class DevBuildConfig extends BuildConfig {
   @override
-  String baseUrl = "https://run.mocky.io/v3/";
+  String baseUrl = "https://web-rtc-ktor.herokuapp.com/";
 }
 
 @Injectable(as: BuildConfig, env: [Environment.test])
 class StagingBuildConfig extends BuildConfig {
   @override
-  String baseUrl = "https://run.mocky.io/v3/";
+  String baseUrl = "https://web-rtc-ktor.herokuapp.com/";
 }
 
 @Injectable(as: BuildConfig, env: [Environment.prod])
 class ProdBuildConfig extends BuildConfig {
   @override
-  String baseUrl = "https://run.mocky.io/v3/";
+  String baseUrl = "https://web-rtc-ktor.herokuapp.com/";
 }

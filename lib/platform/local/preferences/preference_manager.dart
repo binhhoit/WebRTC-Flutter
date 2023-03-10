@@ -1,5 +1,6 @@
 import 'package:hive/hive.dart';
 import 'package:injectable/injectable.dart';
+import 'package:webrtc_flutter/domain/entities/user/user.dart';
 
 @lazySingleton
 class PreferenceManager {
@@ -9,8 +10,7 @@ class PreferenceManager {
 
   static const String _boxName = 'app_preference';
 
-  static PreferenceManager get _instance =>
-      PreferenceManager._privateConstructor();
+  static PreferenceManager get _instance => PreferenceManager._privateConstructor();
 
   PreferenceManager._privateConstructor();
 
@@ -21,11 +21,10 @@ class PreferenceManager {
   @factoryMethod
   static PreferenceManager create() => _instance;
 
-
   Box get _box => Hive.box(_boxName);
 
   static Future<void> init() async {
-      Hive.openBox(_boxName);
+    Hive.openBox(_boxName);
   }
 
   String get accessToken {
@@ -45,6 +44,15 @@ class PreferenceManager {
   }
 
   bool get isLoggedIn => accessToken.isNotEmpty;
+
+  User get currentUser {
+    return _box.get(_accessTokenKey, defaultValue: User(id: "", avatar: "", email: "", name: ""))
+        as User;
+  }
+
+  set currentUser(User? value) {
+    _box.put(_accessTokenKey, value);
+  }
 
   Future<void> clear() async {
     await _box.clear();

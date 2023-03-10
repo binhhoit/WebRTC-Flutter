@@ -4,24 +4,20 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_callkit_incoming/flutter_callkit_incoming.dart';
 import 'package:injectable/injectable.dart';
 import 'package:webrtc_flutter/firebase_options.dart';
 import 'package:webrtc_flutter/injection.dart';
 import 'package:webrtc_flutter/ui/app.dart';
 import 'package:webrtc_flutter/ui/screens/auth/auth_bloc.dart';
-import 'package:webrtc_flutter/utils/call_utils.dart';
 import 'package:webrtc_flutter/utils/push_messaging.dart';
 
 void main() async {
-
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
   await PushNotificationsManager.init();
-  FlutterCallkitIncoming.onEvent.listen(callEventHandle);
-  await setupInjection(const Environment(
-      String.fromEnvironment('ENV_CONFIG', defaultValue: 'dev')));
+  await setupInjection(
+      const Environment(String.fromEnvironment('ENV_CONFIG', defaultValue: 'dev')));
   await EasyLocalization.ensureInitialized();
 
   await SystemChrome.setPreferredOrientations([

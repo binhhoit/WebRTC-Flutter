@@ -2,21 +2,34 @@ import 'dart:core';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
+import 'package:fluttertoast/fluttertoast.dart';
+import 'package:webrtc_flutter/domain/entities/user/user.dart';
+import 'package:webrtc_flutter/platform/local/preferences/preference_manager.dart';
 import 'package:webrtc_flutter/ui/screens/call_sample/Constants.dart';
 
 import '../../widgets/screen_select_dialog.dart';
 import 'signaling.dart';
 
-class CallSample extends StatefulWidget {
+class CallScreen extends StatefulWidget {
   static String tag = 'call_sample';
   final String host;
-  CallSample({required this.host});
+  final List<User> to;
+  final bool isRequestCall;
+  final String? session;
+  final String? offer;
+
+  CallScreen(
+      {required this.host,
+      required this.to,
+      required this.session,
+      required this.offer,
+      required this.isRequestCall});
 
   @override
-  _CallSampleState createState() => _CallSampleState();
+  _CallScreenState createState() => _CallScreenState();
 }
 
-class _CallSampleState extends State<CallSample> {
+class _CallScreenState extends State<CallScreen> with SingleTickerProviderStateMixin {
   Signaling? _signaling;
   List<dynamic> _peers = [];
   String? _selfId;
@@ -26,16 +39,18 @@ class _CallSampleState extends State<CallSample> {
   Session? _session;
   DesktopCapturerSource? selected_source_;
   bool _waitAccept = false;
-  var _enabledCall = false;
+  late AnimationController _animationController;
 
   // ignore: unused_element
-  _CallSampleState();
+  _CallScreenState();
 
   @override
   initState() {
     super.initState();
     initRenderers();
     _connect(context);
+    _animationController = AnimationController(vsync: this, duration: Duration(seconds: 1));
+    _animationController.repeat(reverse: true);
   }
 
   initRenderers() async {
@@ -47,6 +62,7 @@ class _CallSampleState extends State<CallSample> {
   deactivate() {
     super.deactivate();
     _signaling?.close();
+    _animationController.dispose();
     _localRenderer.dispose();
     _remoteRenderer.dispose();
   }
@@ -67,31 +83,43 @@ class _CallSampleState extends State<CallSample> {
       }
     };
 
-    _signaling?.onWebRTCSessionState = (WebRTCSessionState state) {
-      setState(() {
-        switch (state) {
-          case WebRTCSessionState.Active:
-            print(state);
-            _enabledCall = false;
-            break;
-          case WebRTCSessionState.Ready:
-            print(state);
-            _enabledCall = true;
-            break;
-          case WebRTCSessionState.Creating:
-            print(state);
-            _enabledCall = true;
-            break;
-          case WebRTCSessionState.Impossible:
-            print(state);
-            _enabledCall = false;
-            break;
-          case WebRTCSessionState.Offline:
-            print(state);
-            _enabledCall = false;
-            break;
-        }
-      });
+    _signaling?.onWebRTCSessionState = (WebRTCSessionState state) async {
+      switch (state) {
+        case WebRTCSessionState.Active:
+          print(state);
+          setState(() {
+            _inCalling = true;
+          });
+          break;
+        case WebRTCSessionState.Ready:
+          print(state);
+          //auto sent offer
+          if (widget.isRequestCall) {
+            var id = widget.to.map((e) => e.id);
+            var userCall = PreferenceManager.instance.currentUser;
+            _signaling?.onSessionScreenReady(id.toList(),
+                nameCaller: userCall.name, avatar: userCall.avatar);
+          } else {
+            await _signaling?.handleSignalingCommand(SignalingCommand.OFFER, widget.offer ?? '',
+                sessionId: widget.session);
+            _accept();
+          }
+          break;
+        case WebRTCSessionState.Creating:
+          print(state);
+          /*if (!widget.isRequestCall) {
+            await _signaling?.handleSignalingCommand(SignalingCommand.OFFER, widget.offer ?? '',
+                sessionId: widget.session);
+            _accept();
+          }*/
+          break;
+        case WebRTCSessionState.Impossible:
+          print(state);
+          break;
+        case WebRTCSessionState.Offline:
+          print(state);
+          break;
+      }
     };
 
     _signaling?.onCallStateChange = (Session session, CallState state) async {
@@ -102,7 +130,7 @@ class _CallSampleState extends State<CallSample> {
           });
           break;
         case CallState.CallStateRinging:
-          bool? accept = await _showAcceptDialog();
+          /*bool? accept = await _showAcceptDialog();
           if (accept!) {
             _accept();
             setState(() {
@@ -110,7 +138,10 @@ class _CallSampleState extends State<CallSample> {
             });
           } else {
             _reject();
-          }
+          }*/
+          setState(() {
+            _inCalling = true;
+          });
           break;
         case CallState.CallStateBye:
           if (_waitAccept) {
@@ -130,10 +161,10 @@ class _CallSampleState extends State<CallSample> {
           _showInvateDialog();
           break;
         case CallState.CallStateConnected:
-          if (_waitAccept) {
+          /* if (_waitAccept) {
             _waitAccept = false;
             Navigator.of(context).pop(false);
-          }
+          }*/
           setState(() {
             _inCalling = true;
           });
@@ -157,7 +188,7 @@ class _CallSampleState extends State<CallSample> {
 
     _signaling?.onAddRemoteStream = ((_, stream) {
       _remoteRenderer.srcObject = stream;
-      setState(() {});
+      if (mounted) setState(() {});
     });
 
     _signaling?.onRemoveRemoteStream = ((_, stream) {
@@ -193,31 +224,12 @@ class _CallSampleState extends State<CallSample> {
     );
   }
 
-  Future<bool?> _showInvateDialog() {
-    return showDialog<bool?>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text("title"),
-          content: Text("waiting"),
-          actions: <Widget>[
-            TextButton(
-              child: Text("cancel"),
-              onPressed: () {
-                Navigator.of(context).pop(false);
-                _hangUp();
-              },
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  _invitePeer(BuildContext context, String peerId, bool useScreen) async {
-    if (_signaling != null && peerId != _selfId) {
-      _signaling?.invite(peerId, 'video', useScreen);
-    }
+  _showInvateDialog() {
+    Fluttertoast.showToast(
+        msg: 'Waiting Connect',
+        backgroundColor: Colors.green,
+        textColor: Colors.white,
+        fontSize: 16);
   }
 
   _accept() {
@@ -234,8 +246,9 @@ class _CallSampleState extends State<CallSample> {
 
   _hangUp() {
     if (_session != null) {
-      _signaling?.bye(_session!.sid);
+      _signaling?.bye(_session!.sid, [], '');
     }
+    Navigator.of(context).pop(false);
   }
 
   _switchCamera() {
@@ -278,49 +291,71 @@ class _CallSampleState extends State<CallSample> {
     _signaling?.muteMic();
   }
 
-  _buildRow(context, peer) {
-    var self = (peer['id'] == _selfId);
-    return ListBody(children: <Widget>[
-      ListTile(
-        title: Text(self
-            ? peer['name'] + ', ID: ${peer['id']} ' + ' [Your self]'
-            : peer['name'] + ', ID: ${peer['id']} '),
-        onTap: null,
-        trailing: SizedBox(
-            width: 100.0,
-            child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: <Widget>[
-              IconButton(
-                icon: Icon(self ? Icons.close : Icons.videocam,
-                    color: self ? Colors.grey : Colors.black),
-                onPressed: () => _invitePeer(context, peer['id'], false),
-                tooltip: 'Video calling',
+  _waitingCall() {
+    var callUser = widget.to.first;
+    return Expanded(
+      child: Container(
+        width: MediaQuery.of(context).size.width,
+        height: MediaQuery.of(context).size.height,
+        decoration: const BoxDecoration(
+          image: DecorationImage(
+            image: AssetImage("assets/images/bg_call.png"),
+            fit: BoxFit.cover,
+          ),
+        ),
+        child: Column(
+          children: [
+            const SizedBox(height: 150),
+            SizedBox(
+              height: 150,
+              width: 150,
+              child: CircleAvatar(
+                  backgroundImage: NetworkImage(
+                callUser.avatar,
+              )),
+            ),
+            const SizedBox(height: 30),
+            Column(
+              children: [
+                Text(
+                  callUser.name.toUpperCase(),
+                  style: const TextStyle(
+                      color: Colors.white, fontWeight: FontWeight.bold, fontSize: 25),
+                ),
+                const SizedBox(height: 10),
+                FadeTransition(
+                  opacity: _animationController,
+                  child: const Text("CALLING",
+                      style: TextStyle(
+                          color: Colors.white, fontWeight: FontWeight.w300, fontSize: 20)),
+                )
+              ],
+            ),
+            const Spacer(),
+            InkWell(
+              onTap: () {
+                _hangUp();
+              },
+              child: Container(
+                padding: const EdgeInsets.all(10),
+                child: Image.asset(
+                  'assets/images/end_call.png',
+                  width: 70,
+                  height: 70,
+                  fit: BoxFit.cover,
+                ),
               ),
-              IconButton(
-                icon: Icon(self ? Icons.close : Icons.screen_share,
-                    color: self ? Colors.grey : Colors.black),
-                onPressed: () => _invitePeer(context, peer['id'], true),
-                tooltip: 'Screen sharing',
-              )
-            ])),
-        subtitle: Text('[' + peer['user_agent'] + ']'),
+            ),
+            const SizedBox(height: 60),
+          ],
+        ),
       ),
-      Divider()
-    ]);
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-        appBar: AppBar(
-          title: Text('P2P Call Sample' + (_selfId != null ? ' [Your ID ($_selfId)] ' : '')),
-          actions: <Widget>[
-            IconButton(
-              icon: const Icon(Icons.settings),
-              onPressed: null,
-              tooltip: 'setup',
-            ),
-          ],
-        ),
         floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
         floatingActionButton: _inCalling
             ? SizedBox(
@@ -379,25 +414,13 @@ class _CallSampleState extends State<CallSample> {
                 );
               })
             : Column(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  ListView.builder(
-                      shrinkWrap: true,
-                      padding: const EdgeInsets.all(0.0),
-                      itemCount: (_peers != null ? _peers.length : 0),
-                      itemBuilder: (context, i) {
-                        return _buildRow(context, _peers[i]);
-                      }),
-                  MaterialButton(
-                      onPressed: _enabledCall
-                          ? () {
-                              _signaling?.onSessionScreenReady();
-                            }
-                          : null,
-                      color: _enabledCall ? Colors.black : Colors.blueGrey,
-                      child: const Text(
-                        "Create Call / Answer",
-                        style: TextStyle(color: Colors.white),
-                      ))
+                  if (widget.isRequestCall) _waitingCall(),
+                  if (!widget.isRequestCall)
+                    const Center(
+                      child: CircularProgressIndicator(),
+                    )
                 ],
               ));
   }

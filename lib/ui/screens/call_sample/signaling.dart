@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 
@@ -41,9 +42,9 @@ class Session {
 class Signaling {
   Signaling(this._host, this._context);
 
-  JsonEncoder _encoder = JsonEncoder();
-  JsonDecoder _decoder = JsonDecoder();
-  String _selfId = randomNumeric(6);
+  final JsonEncoder _encoder = JsonEncoder();
+  final JsonDecoder _decoder = JsonDecoder();
+  final String _selfId = FirebaseAuth.instance.currentUser?.uid ?? randomNumeric(6);
   SimpleWebSocket? _socket;
   BuildContext? _context;
   var _host;
@@ -68,17 +69,9 @@ class Signaling {
   String get sdpSemantics => 'unified-plan';
   String? offer;
 
-  Map<String, dynamic> _iceServers = {
+  final Map<String, dynamic> _iceServers = {
     'iceServers': [
       {'url': 'stun:stun.l.google.com:19302'},
-      /*
-       * turn server configuration example.
-      {
-        'url': 'turn:123.45.67.89:3478',
-        'username': 'change_to_real_user',
-        'credential': 'change_to_real_secret'
-      },
-      */
     ]
   };
 
@@ -137,24 +130,31 @@ class Signaling {
     }
   }
 
-  void invite(String peerId, String media, bool useScreen) async {
-    var sessionId = _selfId + '-' + peerId;
+  void invite(
+      String media, bool useScreen, List<String> to, String from, nameCaller, avatar) async {
+    var peerId = randomNumeric(12);
+    var sessionId = '$_selfId-$peerId';
     Session session = await _createSession(null,
         peerId: peerId, sessionId: sessionId, media: media, screenSharing: useScreen);
     _sessions[sessionId] = session;
     if (media == 'data') {
       _createDataChannel(session);
     }
-    _createOffer(session, media);
+    _createOffer(session, media, to, from, nameCaller, avatar);
     onCallStateChange?.call(session, CallState.CallStateNew);
     onCallStateChange?.call(session, CallState.CallStateInvite);
   }
 
-  void bye(String sessionId) {
-    _send('bye', {
-      'session_id': sessionId,
-      'from': _selfId,
-    });
+  void bye(String sessionId, List<String> to, String from) {
+    _send(
+        'bye',
+        {
+          'session_id': sessionId,
+          'from': _selfId,
+        },
+        to,
+        from,
+        sessionId);
     var sess = _sessions[sessionId];
     if (sess != null) {
       _closeSession(sess);
@@ -174,12 +174,13 @@ class Signaling {
     if (session == null) {
       return;
     }
-    bye(session.sid);
+    bye(session.sid, [], '');
   }
 
   //TODO: handle state connect server
-  Future<void> handleStateMessage(String text) async {
-    var state = _getSeparatedMessage(text);
+  Future<void> handleStateMessage(rawData) async {
+    var data = rawData['data'];
+    var state = _getSeparatedMessage(data);
     if (state == WebRTCSessionState.Active.name) {
       onWebRTCSessionState?.call(WebRTCSessionState.Active);
     } else if (state == WebRTCSessionState.Creating.name) {
@@ -194,23 +195,23 @@ class Signaling {
   }
 
   //TODO: handle sent event to server
-  void handleSignalingCommand(SignalingCommand command, String text) {
+  Future<void> handleSignalingCommand(SignalingCommand command, String text, {sessionId}) async {
     var value = _getSeparatedMessage(text);
     print("received signaling: $command $value");
     switch (command) {
       case SignalingCommand.OFFER:
         {
-          handleOffer(value);
+          await handleOffer(value, sessionId);
         }
         break;
       case SignalingCommand.ANSWER:
         {
-          handleAnswer(value);
+          handleAnswer(value, sessionId);
         }
         break;
       case SignalingCommand.ICE:
         {
-          handleIce(value);
+          handleIce(value, sessionId);
         }
         break;
       default:
@@ -218,15 +219,17 @@ class Signaling {
     }
   }
 
-  void onMessage(String message) async {
-    if (message.toLowerCase().startsWith(SignalingCommand.STATE.name.toLowerCase())) {
+  void onMessage(message) async {
+    var status = message['data'];
+    var sessionId = message['sessionId'];
+    if (status.toLowerCase().startsWith(SignalingCommand.STATE.name.toLowerCase())) {
       handleStateMessage(message);
-    } else if (message.toLowerCase().startsWith(SignalingCommand.OFFER.name.toLowerCase())) {
-      handleSignalingCommand(SignalingCommand.OFFER, message);
-    } else if (message.toLowerCase().startsWith(SignalingCommand.ANSWER.name.toLowerCase())) {
-      handleSignalingCommand(SignalingCommand.ANSWER, message);
-    } else if (message.toLowerCase().startsWith(SignalingCommand.ICE.name.toLowerCase())) {
-      handleSignalingCommand(SignalingCommand.ICE, message);
+    } else if (status.toLowerCase().startsWith(SignalingCommand.OFFER.name.toLowerCase())) {
+      handleSignalingCommand(SignalingCommand.OFFER, status);
+    } else if (status.toLowerCase().startsWith(SignalingCommand.ANSWER.name.toLowerCase())) {
+      handleSignalingCommand(SignalingCommand.ANSWER, status, sessionId: sessionId);
+    } else if (status.toLowerCase().startsWith(SignalingCommand.ICE.name.toLowerCase())) {
+      handleSignalingCommand(SignalingCommand.ICE, status, sessionId: sessionId);
     }
 
     /*
@@ -326,13 +329,12 @@ class Signaling {
     }*/
   }
 
-  Future<void> handleOffer(String value) async {
+  Future<void> handleOffer(String value, String sessionId) async {
     print("[SDP] handle offer: $value");
     offer = value;
-    var sessionId = "1";
     var session = _sessions[sessionId];
     var newSession = await _createSession(session,
-        peerId: '1', sessionId: sessionId, media: 'video', screenSharing: false);
+        peerId: randomNumeric(12), sessionId: sessionId, media: 'video', screenSharing: false);
     _sessions[sessionId] = newSession;
     await newSession.pc
         ?.setRemoteDescription(RTCSessionDescription(value.mungeCodecs(), Type.OFFER.name));
@@ -347,20 +349,17 @@ class Signaling {
     onCallStateChange?.call(newSession, CallState.CallStateRinging);
   }
 
-  void handleAnswer(String sdp) {
+  void handleAnswer(String sdp, String sessionId) {
     print("[SDP] handle answer: $sdp");
-    var peerId = '1';
-    var sessionId = _selfId + '-' + peerId;
+    //Note Get Map Data [sessonID sdp]
     var session = _sessions[sessionId];
     session?.pc?.setRemoteDescription(
         RTCSessionDescription(sdp.mungeCodecs(), Type.ANSWER.name.toLowerCase()));
     onCallStateChange?.call(session!, CallState.CallStateConnected);
   }
 
-  Future<void> handleIce(String iceMessage) async {
+  Future<void> handleIce(String iceMessage, String sessionId) async {
     try {
-      var peerId = '1';
-      var sessionId = _selfId + '-' + peerId;
       var session = _sessions[sessionId];
       var iceArray = iceMessage.split(ICE_SEPARATOR);
       RTCIceCandidate candidate = RTCIceCandidate(iceArray[2], iceArray[0], int.parse(iceArray[1]));
@@ -371,7 +370,7 @@ class Signaling {
           session.remoteCandidates.add(candidate);
         }
       } else {
-        _sessions[sessionId] = Session(pid: peerId, sid: sessionId)
+        _sessions[sessionId] = Session(pid: _selfId, sid: sessionId)
           ..remoteCandidates.add(candidate);
       }
     } catch (e) {
@@ -380,7 +379,7 @@ class Signaling {
   }
 
   Future<void> connect() async {
-    var url = 'https://$_host/rtc';
+    var url = '$_host/rtc?uid=$_selfId';
     _socket = SimpleWebSocket(url);
 
     print('connect to $url');
@@ -410,12 +409,13 @@ class Signaling {
     _socket?.onOpen = () {
       print('onOpen');
       onSignalingStateChange?.call(SignalingState.ConnectionOpen);
-      _send('new', {'name': DeviceInfo.label, 'id': _selfId, 'user_agent': DeviceInfo.userAgent});
+      _send('new', {'name': DeviceInfo.label, 'id': _selfId, 'user_agent': DeviceInfo.userAgent},
+          null, null, null);
     };
 
     _socket?.onMessage = (message) {
       print('Received data: ' + message);
-      onMessage(message);
+      onMessage(_decoder.convert(message));
     };
 
     _socket?.onClose = (int? code, String? reason) {
@@ -558,8 +558,12 @@ class Signaling {
 
       await Future.delayed(
           const Duration(seconds: 1),
-          () => _send(SignalingCommand.ICE.name.toLowerCase(),
-              "${candidate.sdpMid}$ICE_SEPARATOR${candidate.sdpMLineIndex}$ICE_SEPARATOR${candidate.candidate}"));
+          () => _send(
+              SignalingCommand.ICE.name.toLowerCase(),
+              "${candidate.sdpMid}$ICE_SEPARATOR${candidate.sdpMLineIndex}$ICE_SEPARATOR${candidate.candidate}",
+              [],
+              '',
+              sessionId));
     };
 
     pc.onIceConnectionState = (state) {};
@@ -594,12 +598,14 @@ class Signaling {
     _addDataChannel(session, channel);
   }
 
-  Future<void> _createOffer(Session session, String media) async {
+  Future<void> _createOffer(
+      Session session, String media, List<String> to, String from, nameCaller, avatar) async {
     try {
       RTCSessionDescription s =
           await session.pc!.createOffer(media == 'data' ? _dcConstraints : {});
       await session.pc!.setLocalDescription(_fixSdp(s));
-      _send(SignalingCommand.OFFER.name, s.sdp);
+      _send(SignalingCommand.OFFER.name, s.sdp, to, from, session.sid,
+          nameCaller: nameCaller, avatar: avatar);
     } catch (e) {
       print(e.toString());
     }
@@ -616,15 +622,23 @@ class Signaling {
       RTCSessionDescription s =
           await session.pc!.createAnswer(media == 'data' ? _dcConstraints : {});
       await session.pc!.setLocalDescription(_fixSdp(s));
-      _send(SignalingCommand.ANSWER.name, s.sdp);
+      _send(SignalingCommand.ANSWER.name, s.sdp, [], '', session.sid);
     } catch (e) {
       print(e.toString());
     }
   }
 
-  _send(event, data) {
-    print("[sendCommand] $event $data");
-    _socket?.send("$event $data");
+  _send(event, data, to, from, sessionId, {nameCaller, avatar}) {
+    var request = Map();
+    request["sessionId"] = sessionId;
+    request["data"] = "$event $data";
+    request["to"] = to;
+    request["from"] = from;
+    request["nameCaller"] = nameCaller;
+    request["avatar"] = avatar;
+
+    print("[sendCommand] -->${_encoder.convert(request)}");
+    _socket?.send(_encoder.convert(request));
   }
 
   Future<void> _cleanSessions() async {
@@ -672,15 +686,14 @@ class Signaling {
     return text.split(' ').skip(1).join(' ');
   }
 
-  Future<void> onSessionScreenReady() async {
+  Future<void> onSessionScreenReady(List<String> to, {nameCaller, avatar}) async {
     if (offer != null) {
       var peerId = '1';
       var sessionId = _selfId + '-' + peerId;
       accept(sessionId);
       print("--------accept--------");
     } else {
-      var peerId = '1';
-      invite(peerId, 'video', false);
+      invite('video', false, to, _selfId, nameCaller, avatar);
       print("--------invite--------");
     }
   }
