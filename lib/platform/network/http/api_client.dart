@@ -18,4 +18,7 @@ abstract class ApiClient {
 
   @POST("sendFCMToken")
   Future sendFCMToken(@Queries(encoded: false) Map<String, dynamic> queryParams);
+
+  @POST("declined_call")
+  Future declinedCall(@Queries(encoded: false) Map<String, dynamic> sessionIdParams);
 }

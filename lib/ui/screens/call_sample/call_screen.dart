@@ -18,7 +18,7 @@ class CallScreen extends StatefulWidget {
   final String? session;
   final String? offer;
 
-  CallScreen(
+  const CallScreen(
       {required this.host,
       required this.to,
       required this.session,
@@ -31,17 +31,13 @@ class CallScreen extends StatefulWidget {
 
 class _CallScreenState extends State<CallScreen> with SingleTickerProviderStateMixin {
   Signaling? _signaling;
-  List<dynamic> _peers = [];
-  String? _selfId;
   RTCVideoRenderer _localRenderer = RTCVideoRenderer();
   RTCVideoRenderer _remoteRenderer = RTCVideoRenderer();
   bool _inCalling = false;
   Session? _session;
   DesktopCapturerSource? selected_source_;
-  bool _waitAccept = false;
   late AnimationController _animationController;
 
-  // ignore: unused_element
   _CallScreenState();
 
   @override
@@ -130,41 +126,24 @@ class _CallScreenState extends State<CallScreen> with SingleTickerProviderStateM
           });
           break;
         case CallState.CallStateRinging:
-          /*bool? accept = await _showAcceptDialog();
-          if (accept!) {
-            _accept();
-            setState(() {
-              _inCalling = true;
-            });
-          } else {
-            _reject();
-          }*/
+          _showAcceptDialog();
           setState(() {
             _inCalling = true;
           });
           break;
         case CallState.CallStateBye:
-          if (_waitAccept) {
-            print('peer reject');
-            _waitAccept = false;
-            Navigator.of(context).pop(false);
-          }
           setState(() {
             _localRenderer.srcObject = null;
             _remoteRenderer.srcObject = null;
             _inCalling = false;
             _session = null;
           });
+          Navigator.pop(context);
           break;
         case CallState.CallStateInvite:
-          _waitAccept = true;
-          _showInvateDialog();
+          _showInviteDialog();
           break;
         case CallState.CallStateConnected:
-          /* if (_waitAccept) {
-            _waitAccept = false;
-            Navigator.of(context).pop(false);
-          }*/
           setState(() {
             _inCalling = true;
           });
@@ -175,10 +154,7 @@ class _CallScreenState extends State<CallScreen> with SingleTickerProviderStateM
     };
 
     _signaling?.onPeersUpdate = ((event) {
-      setState(() {
-        _selfId = event['self'];
-        _peers = event['peers'];
-      });
+      setState(() {});
     });
 
     _signaling?.onLocalStream = ((stream) {
@@ -196,35 +172,12 @@ class _CallScreenState extends State<CallScreen> with SingleTickerProviderStateM
     });
   }
 
-  Future<bool?> _showAcceptDialog() {
-    return showDialog<bool?>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text("title"),
-          content: Text("accept?"),
-          actions: <Widget>[
-            MaterialButton(
-              child: Text(
-                'Reject',
-                style: TextStyle(color: Colors.red),
-              ),
-              onPressed: () => Navigator.of(context).pop(false),
-            ),
-            MaterialButton(
-              child: Text(
-                'Accept',
-                style: TextStyle(color: Colors.green),
-              ),
-              onPressed: () => Navigator.of(context).pop(true),
-            ),
-          ],
-        );
-      },
-    );
+  _showAcceptDialog() {
+    Fluttertoast.showToast(
+        msg: 'Accept Dialog', backgroundColor: Colors.green, textColor: Colors.white, fontSize: 16);
   }
 
-  _showInvateDialog() {
+  _showInviteDialog() {
     Fluttertoast.showToast(
         msg: 'Waiting Connect',
         backgroundColor: Colors.green,
@@ -248,7 +201,6 @@ class _CallScreenState extends State<CallScreen> with SingleTickerProviderStateM
     if (_session != null) {
       _signaling?.bye(_session!.sid, [], '');
     }
-    Navigator.of(context).pop(false);
   }
 
   _switchCamera() {
@@ -361,15 +313,19 @@ class _CallScreenState extends State<CallScreen> with SingleTickerProviderStateM
             ? SizedBox(
                 width: 240.0,
                 child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: <Widget>[
+                  const FloatingActionButton(
+                    onPressed: null,
+                    child: Text('00:00'),
+                  ),
                   FloatingActionButton(
                     child: const Icon(Icons.switch_camera),
                     tooltip: 'Camera',
                     onPressed: _switchCamera,
                   ),
                   FloatingActionButton(
-                    child: const Icon(Icons.desktop_mac),
-                    tooltip: 'Screen Sharing',
-                    onPressed: () => selectScreenSourceDialog(context),
+                    child: const Icon(Icons.mic_off),
+                    tooltip: 'Mute Mic',
+                    onPressed: _muteMic,
                   ),
                   FloatingActionButton(
                     onPressed: _hangUp,
@@ -377,11 +333,6 @@ class _CallScreenState extends State<CallScreen> with SingleTickerProviderStateM
                     child: Icon(Icons.call_end),
                     backgroundColor: Colors.pink,
                   ),
-                  FloatingActionButton(
-                    child: const Icon(Icons.mic_off),
-                    tooltip: 'Mute Mic',
-                    onPressed: _muteMic,
-                  )
                 ]))
             : null,
         body: _inCalling

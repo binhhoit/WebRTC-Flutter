@@ -13,4 +13,9 @@ class DataRepositoryImpl extends DataRepository with HandleNetworkMixin {
   Future<void> sentFCMToken(Map<String, dynamic> queryParams) {
     return apiClient.sendFCMToken(queryParams);
   }
+
+  @override
+  Future<void> declinedCall(Map<String, dynamic> sessionIdParams) {
+    return apiClient.declinedCall(sessionIdParams);
+  }
 }
