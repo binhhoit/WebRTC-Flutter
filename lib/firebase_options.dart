@@ -17,7 +17,10 @@ import 'package:flutter/foundation.dart'
 class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {
     if (kIsWeb) {
-      return web;
+      throw UnsupportedError(
+        'DefaultFirebaseOptions have not been configured for web - '
+        'you can reconfigure this by running the FlutterFire CLI again.',
+      );
     }
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
@@ -25,7 +28,10 @@ class DefaultFirebaseOptions {
       case TargetPlatform.iOS:
         return ios;
       case TargetPlatform.macOS:
-        return macos;
+        throw UnsupportedError(
+          'DefaultFirebaseOptions have not been configured for macos - '
+          'you can reconfigure this by running the FlutterFire CLI again.',
+        );
       case TargetPlatform.windows:
         throw UnsupportedError(
           'DefaultFirebaseOptions have not been configured for windows - '
@@ -43,17 +49,6 @@ class DefaultFirebaseOptions {
     }
   }
 
-  static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyA07AdANBgiWCqWGO65dC7MF2p4A2EfFPQ',
-    appId: '1:174153813964:web:af4755169280fa7529d769',
-    messagingSenderId: '174153813964',
-    projectId: 'webrtc-e4bbd',
-    authDomain: 'webrtc-e4bbd.firebaseapp.com',
-    databaseURL: 'https://webrtc-e4bbd-default-rtdb.asia-southeast1.firebasedatabase.app',
-    storageBucket: 'webrtc-e4bbd.appspot.com',
-    measurementId: 'G-36B37V7JWD',
-  );
-
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyAlE_2NrYpHISIqxnZ_W8H4-hwio-jLscU',
     appId: '1:174153813964:android:ff318f2ca20352a029d769',
@@ -65,25 +60,13 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyBNCdCFOtnz3xW0w-Fou7cUNBWhcyAJ9A0',
-    appId: '1:174153813964:ios:e466476d00081a6a29d769',
+    appId: '1:174153813964:ios:f8b8e4066e0283a229d769',
     messagingSenderId: '174153813964',
     projectId: 'webrtc-e4bbd',
     databaseURL: 'https://webrtc-e4bbd-default-rtdb.asia-southeast1.firebasedatabase.app',
     storageBucket: 'webrtc-e4bbd.appspot.com',
     androidClientId: '174153813964-6ip6ee9blkn1noq4407pbumj0uqt88hq.apps.googleusercontent.com',
-    iosClientId: '174153813964-t08cnfpemmo0jc33arifigmjsriu3phm.apps.googleusercontent.com',
-    iosBundleId: 'com.example.webrtcFlutter',
-  );
-
-  static const FirebaseOptions macos = FirebaseOptions(
-    apiKey: 'AIzaSyBNCdCFOtnz3xW0w-Fou7cUNBWhcyAJ9A0',
-    appId: '1:174153813964:ios:e466476d00081a6a29d769',
-    messagingSenderId: '174153813964',
-    projectId: 'webrtc-e4bbd',
-    databaseURL: 'https://webrtc-e4bbd-default-rtdb.asia-southeast1.firebasedatabase.app',
-    storageBucket: 'webrtc-e4bbd.appspot.com',
-    androidClientId: '174153813964-6ip6ee9blkn1noq4407pbumj0uqt88hq.apps.googleusercontent.com',
-    iosClientId: '174153813964-t08cnfpemmo0jc33arifigmjsriu3phm.apps.googleusercontent.com',
-    iosBundleId: 'com.example.webrtcFlutter',
+    iosClientId: '174153813964-dgkue8fpsuotncff13f5kbtm9on4lc84.apps.googleusercontent.com',
+    iosBundleId: 'sts.demo.webrtc',
   );
 }
