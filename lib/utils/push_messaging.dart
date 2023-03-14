@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'dart:ui';
 
 import 'package:firebase_core/firebase_core.dart';
@@ -9,13 +8,11 @@ import 'package:webrtc_flutter/firebase_options.dart';
 import 'package:webrtc_flutter/utils/notification_utils.dart';
 
 class PushNotificationsManager {
-
   PushNotificationsManager._();
 
   factory PushNotificationsManager() => _instance;
 
-  static final PushNotificationsManager _instance =
-  PushNotificationsManager._();
+  static final PushNotificationsManager _instance = PushNotificationsManager._();
 
   static final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
   static bool _initialized = false;
@@ -32,18 +29,18 @@ class PushNotificationsManager {
 
       // FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
-
       // Request permission notification
-      if(Platform.isIOS) {
-        await _firebaseMessaging.requestPermission(alert: true,
-          announcement: false,
-          badge: true,
-          carPlay: false,
-          criticalAlert: false,
-          provisional: false,
-          sound: true,
-        );
-      }
+      //if (Platform.isIOS) {
+      await _firebaseMessaging.requestPermission(
+        alert: true,
+        announcement: true,
+        badge: true,
+        carPlay: false,
+        criticalAlert: true,
+        provisional: true,
+        sound: true,
+      );
+      //}
 
       FirebaseMessaging.onMessage.listen((RemoteMessage event) {
         Fluttertoast.showToast(
@@ -62,7 +59,7 @@ class PushNotificationsManager {
   }
 
   static Future displayNotification(RemoteMessage message) async {
-    if(message.data['type'] == 'incoming_call') {
+    if (message.data['type'] == 'incoming_call') {
       NotificationUtils.showCallkitIncoming(message);
     }
   }
@@ -88,5 +85,4 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   //     fontSize: 16);
 
   PushNotificationsManager.displayNotification(message);
-
 }

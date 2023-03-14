@@ -9,6 +9,7 @@ import 'package:webrtc_flutter/firebase_options.dart';
 import 'package:webrtc_flutter/injection.dart';
 import 'package:webrtc_flutter/ui/app.dart';
 import 'package:webrtc_flutter/ui/screens/auth/auth_bloc.dart';
+import 'package:webrtc_flutter/ui/screens/call/login_bloc.dart';
 import 'package:webrtc_flutter/utils/push_messaging.dart';
 
 void main() async {
@@ -29,8 +30,11 @@ void main() async {
       supportedLocales: const [Locale('en', 'US')],
       fallbackLocale: const Locale('en', 'US'),
       path: 'assets/translations',
-      child: BlocProvider<AuthenticationBloc>(
-        create: (context) => injector.get(),
+      child: MultiBlocProvider(
+        providers: [
+          BlocProvider<CallBloc>(create: (BuildContext context) => injector.get()),
+          BlocProvider<AuthenticationBloc>(create: (BuildContext context) => injector.get()),
+        ],
         child: App(),
       ),
     ),

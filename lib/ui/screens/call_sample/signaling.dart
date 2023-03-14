@@ -48,8 +48,6 @@ class Signaling {
   SimpleWebSocket? _socket;
   BuildContext? _context;
   var _host;
-  var _port = 8080;
-  var _turnCredential;
   Map<String, Session> _sessions = {};
   MediaStream? _localStream;
   List<MediaStream> _remoteStreams = <MediaStream>[];
@@ -63,8 +61,6 @@ class Signaling {
   Function(Session session, MediaStream stream)? onAddRemoteStream;
   Function(Session session, MediaStream stream)? onRemoveRemoteStream;
   Function(dynamic event)? onPeersUpdate;
-  Function(Session session, RTCDataChannel dc, RTCDataChannelMessage data)? onDataChannelMessage;
-  Function(Session session, RTCDataChannel dc)? onDataChannel;
 
   String get sdpSemantics => 'unified-plan';
   String? offer;
@@ -137,9 +133,6 @@ class Signaling {
     Session session = await _createSession(null,
         peerId: peerId, sessionId: sessionId, media: media, screenSharing: useScreen);
     _sessions[sessionId] = session;
-    if (media == 'data') {
-      _createDataChannel(session);
-    }
     _createOffer(session, media, to, from, nameCaller, avatar);
     onCallStateChange?.call(session, CallState.CallStateNew);
     onCallStateChange?.call(session, CallState.CallStateInvite);
@@ -178,7 +171,7 @@ class Signaling {
   }
 
   //TODO: handle state connect server
-  Future<void> handleStateMessage(rawData) async {
+  Future<void> handleStateMessage(rawData, {sessionId}) async {
     var data = rawData['data'];
     var state = _getSeparatedMessage(data);
     if (state == WebRTCSessionState.Active.name) {
@@ -191,6 +184,9 @@ class Signaling {
       onWebRTCSessionState?.call(WebRTCSessionState.Impossible);
     } else if (state == WebRTCSessionState.Offline.name) {
       onWebRTCSessionState?.call(WebRTCSessionState.Offline);
+    } else if (state == WebRTCSessionState.Close.name) {
+      _handelBye(sessionId);
+      onWebRTCSessionState?.call(WebRTCSessionState.Close);
     }
   }
 
@@ -223,7 +219,7 @@ class Signaling {
     var status = message['data'];
     var sessionId = message['sessionId'];
     if (status.toLowerCase().startsWith(SignalingCommand.STATE.name.toLowerCase())) {
-      handleStateMessage(message);
+      handleStateMessage(message, sessionId: sessionId);
     } else if (status.toLowerCase().startsWith(SignalingCommand.OFFER.name.toLowerCase())) {
       handleSignalingCommand(SignalingCommand.OFFER, status);
     } else if (status.toLowerCase().startsWith(SignalingCommand.ANSWER.name.toLowerCase())) {
@@ -231,102 +227,6 @@ class Signaling {
     } else if (status.toLowerCase().startsWith(SignalingCommand.ICE.name.toLowerCase())) {
       handleSignalingCommand(SignalingCommand.ICE, status, sessionId: sessionId);
     }
-
-    /*
-    Map<String, dynamic> mapData = message;
-    var data = mapData['data'];
-    switch (mapData['type']) {
-      case 'peers':
-        {
-          List<dynamic> peers = data;
-          if (onPeersUpdate != null) {
-            Map<String, dynamic> event = Map<String, dynamic>();
-            event['self'] = _selfId;
-            event['peers'] = peers;
-            onPeersUpdate?.call(event);
-          }
-        }
-        break;
-      case 'offer':
-        {
-          var peerId = data['from'];
-          var description = data['description'];
-          var media = data['media'];
-          var sessionId = data['session_id'];
-          var session = _sessions[sessionId];
-          var newSession = await _createSession(session,
-              peerId: peerId, sessionId: sessionId, media: media, screenSharing: false);
-          _sessions[sessionId] = newSession;
-          await newSession.pc?.setRemoteDescription(
-              RTCSessionDescription(description['sdp'], description['type']));
-          // await _createAnswer(newSession, media);
-
-          if (newSession.remoteCandidates.length > 0) {
-            newSession.remoteCandidates.forEach((candidate) async {
-              await newSession.pc?.addCandidate(candidate);
-            });
-            newSession.remoteCandidates.clear();
-          }
-          onCallStateChange?.call(newSession, CallState.CallStateNew);
-          onCallStateChange?.call(newSession, CallState.CallStateRinging);
-        }
-        break;
-      case 'answer':
-        {
-          var description = data['description'];
-          var sessionId = data['session_id'];
-          var session = _sessions[sessionId];
-          session?.pc?.setRemoteDescription(
-              RTCSessionDescription(description['sdp'], description['type']));
-          onCallStateChange?.call(session!, CallState.CallStateConnected);
-        }
-        break;
-      case 'candidate':
-        {
-          var peerId = data['from'];
-          var candidateMap = data['candidate'];
-          var sessionId = data['session_id'];
-          var session = _sessions[sessionId];
-          RTCIceCandidate candidate = RTCIceCandidate(
-              candidateMap['candidate'], candidateMap['sdpMid'], candidateMap['sdpMLineIndex']);
-
-          if (session != null) {
-            if (session.pc != null) {
-              await session.pc?.addCandidate(candidate);
-            } else {
-              session.remoteCandidates.add(candidate);
-            }
-          } else {
-            _sessions[sessionId] = Session(pid: peerId, sid: sessionId)
-              ..remoteCandidates.add(candidate);
-          }
-        }
-        break;
-      case 'leave':
-        {
-          var peerId = data as String;
-          _closeSessionByPeerId(peerId);
-        }
-        break;
-      case 'bye':
-        {
-          var sessionId = data['session_id'];
-          print('bye: ' + sessionId);
-          var session = _sessions.remove(sessionId);
-          if (session != null) {
-            onCallStateChange?.call(session, CallState.CallStateBye);
-            _closeSession(session);
-          }
-        }
-        break;
-      case 'keepalive':
-        {
-          print('keepalive response!');
-        }
-        break;
-      default:
-        break;
-    }*/
   }
 
   Future<void> handleOffer(String value, String sessionId) async {
@@ -375,6 +275,15 @@ class Signaling {
       }
     } catch (e) {
       print("error handleIce $e");
+    }
+  }
+
+  _handelBye(sessionId) {
+    print('bye: ' + sessionId);
+    var session = _sessions.remove(sessionId);
+    if (session != null) {
+      onCallStateChange?.call(session, CallState.CallStateBye);
+      _closeSession(session);
     }
   }
 
@@ -575,27 +484,8 @@ class Signaling {
       });
     };
 
-    pc.onDataChannel = (channel) {
-      _addDataChannel(newSession, channel);
-    };
-
     newSession.pc = pc;
     return newSession;
-  }
-
-  void _addDataChannel(Session session, RTCDataChannel channel) {
-    channel.onDataChannelState = (e) {};
-    channel.onMessage = (RTCDataChannelMessage data) {
-      onDataChannelMessage?.call(session, channel, data);
-    };
-    session.dc = channel;
-    onDataChannel?.call(session, channel);
-  }
-
-  Future<void> _createDataChannel(Session session, {label: 'fileTransfer'}) async {
-    RTCDataChannelInit dataChannelDict = RTCDataChannelInit()..maxRetransmits = 30;
-    RTCDataChannel channel = await session.pc!.createDataChannel(label, dataChannelDict);
-    _addDataChannel(session, channel);
   }
 
   Future<void> _createOffer(

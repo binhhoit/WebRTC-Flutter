@@ -5,6 +5,7 @@ import 'package:webrtc_flutter/domain/entities/user/user.dart';
 @lazySingleton
 class PreferenceManager {
   static const String _accessTokenKey = 'ACCESS_TOKEN';
+  static const String _userProfileKey = 'USER_PROFILE';
   static const String _refreshTokenKey = 'REFRESH_TOKEN';
   static const String _fcmTokenKey = 'FCM_TOKEN';
 
@@ -46,12 +47,12 @@ class PreferenceManager {
   bool get isLoggedIn => accessToken.isNotEmpty;
 
   User get currentUser {
-    return _box.get(_accessTokenKey, defaultValue: User(id: "", avatar: "", email: "", name: ""))
+    return _box.get(_userProfileKey, defaultValue: User(id: "", avatar: "", email: "", name: ""))
         as User;
   }
 
   set currentUser(User? value) {
-    _box.put(_accessTokenKey, value);
+    _box.put(_userProfileKey, value);
   }
 
   Future<void> clear() async {
