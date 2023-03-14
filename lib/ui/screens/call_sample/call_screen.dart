@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:core';
 
 import 'package:flutter/material.dart';
@@ -38,6 +39,9 @@ class _CallScreenState extends State<CallScreen> with SingleTickerProviderStateM
   DesktopCapturerSource? selected_source_;
   late AnimationController _animationController;
 
+  Timer? _timer;
+  int _seconds = 0;
+
   _CallScreenState();
 
   @override
@@ -61,6 +65,7 @@ class _CallScreenState extends State<CallScreen> with SingleTickerProviderStateM
     _animationController.dispose();
     _localRenderer.dispose();
     _remoteRenderer.dispose();
+    _timer?.cancel();
   }
 
   void _connect(BuildContext context) async {
@@ -68,6 +73,9 @@ class _CallScreenState extends State<CallScreen> with SingleTickerProviderStateM
     _signaling?.onSignalingStateChange = (SignalingState state) {
       switch (state) {
         case SignalingState.ConnectionClosed:
+          if (mounted) {
+            Navigator.pop(context);
+          }
           print(state);
           break;
         case SignalingState.ConnectionError:
@@ -86,6 +94,7 @@ class _CallScreenState extends State<CallScreen> with SingleTickerProviderStateM
           setState(() {
             _inCalling = true;
           });
+          _startTimer();
           break;
         case WebRTCSessionState.Ready:
           print(state);
@@ -114,6 +123,9 @@ class _CallScreenState extends State<CallScreen> with SingleTickerProviderStateM
           break;
         case WebRTCSessionState.Offline:
           print(state);
+          break;
+        case WebRTCSessionState.Close:
+          // TODO: Handle this case.
           break;
       }
     };
@@ -170,6 +182,21 @@ class _CallScreenState extends State<CallScreen> with SingleTickerProviderStateM
     _signaling?.onRemoveRemoteStream = ((_, stream) {
       _remoteRenderer.srcObject = null;
     });
+  }
+
+  _startTimer() {
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      setState(() {
+        _seconds++;
+      });
+    });
+  }
+
+  String _formatDuration(Duration duration) {
+    String twoDigits(int n) => n.toString().padLeft(2, "0");
+    String twoDigitMinutes = twoDigits(duration.inMinutes.remainder(60));
+    String twoDigitSeconds = twoDigits(duration.inSeconds.remainder(60));
+    return "$twoDigitMinutes:$twoDigitSeconds";
   }
 
   _showAcceptDialog() {
@@ -313,9 +340,14 @@ class _CallScreenState extends State<CallScreen> with SingleTickerProviderStateM
             ? SizedBox(
                 width: 240.0,
                 child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: <Widget>[
-                  const FloatingActionButton(
+                  FloatingActionButton(
+                    tooltip: 'Camera',
                     onPressed: null,
-                    child: Text('00:00'),
+                    backgroundColor: Colors.transparent,
+                    child: Text(
+                      _formatDuration(Duration(seconds: _seconds)),
+                      style: const TextStyle(color: Colors.redAccent, fontSize: 16),
+                    ),
                   ),
                   FloatingActionButton(
                     child: const Icon(Icons.switch_camera),
@@ -323,9 +355,9 @@ class _CallScreenState extends State<CallScreen> with SingleTickerProviderStateM
                     onPressed: _switchCamera,
                   ),
                   FloatingActionButton(
-                    child: const Icon(Icons.mic_off),
                     tooltip: 'Mute Mic',
                     onPressed: _muteMic,
+                    child: const Icon(Icons.mic_off),
                   ),
                   FloatingActionButton(
                     onPressed: _hangUp,

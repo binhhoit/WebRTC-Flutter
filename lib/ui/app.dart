@@ -81,16 +81,14 @@ class _AppState extends State<App> {
 // TODO: show screen calling in Flutter
         break;
       case Event.ACTION_CALL_ACCEPT:
-        _navigator.pushAndRemoveUntil(
-            MaterialPageRoute<void>(
-                builder: (_) => CallScreen(
-                      host: injector.get<BuildConfig>().baseUrl,
-                      to: [],
-                      session: event.body['extra']['sessionId'],
-                      offer: decompress(event.body['extra']['offer_message']),
-                      isRequestCall: false,
-                    )),
-            (route) => false);
+        _navigator.push(MaterialPageRoute<void>(
+            builder: (_) => CallScreen(
+                  host: injector.get<BuildConfig>().baseUrl,
+                  to: [],
+                  session: event.body['extra']['sessionId'],
+                  offer: decompress(event.body['extra']['offer_message']),
+                  isRequestCall: false,
+                )));
         Fluttertoast.showToast(
             msg: 'Accept Call}',
             backgroundColor: Colors.green,

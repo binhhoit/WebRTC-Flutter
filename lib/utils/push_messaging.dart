@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'dart:ui';
 
 import 'package:firebase_core/firebase_core.dart';
@@ -31,17 +30,17 @@ class PushNotificationsManager {
       // FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
       // Request permission notification
-      if (Platform.isIOS) {
-        await _firebaseMessaging.requestPermission(
-          alert: true,
-          announcement: true,
-          badge: true,
-          carPlay: false,
-          criticalAlert: true,
-          provisional: true,
-          sound: true,
-        );
-      }
+      //if (Platform.isIOS) {
+      await _firebaseMessaging.requestPermission(
+        alert: true,
+        announcement: true,
+        badge: true,
+        carPlay: false,
+        criticalAlert: true,
+        provisional: true,
+        sound: true,
+      );
+      //}
 
       FirebaseMessaging.onMessage.listen((RemoteMessage event) {
         Fluttertoast.showToast(
