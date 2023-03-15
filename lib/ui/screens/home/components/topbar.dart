@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:webrtc_flutter/resources/fonts.gen.dart';
 
-PreferredSizeWidget topBar() {
+PreferredSizeWidget topBar(Function() callback) {
   return AppBar(
     title: Row(
       children: const [
@@ -19,10 +19,10 @@ PreferredSizeWidget topBar() {
 // Add some space between the title and other widgets in the app bar
       ],
     ),
-    actions: const [
+    actions: [
       Padding(
         padding: EdgeInsets.all(10.0),
-        child: Icon(Icons.group_add),
+        child: IconButton(icon: Icon(Icons.group_add), onPressed: callback),
       )
     ],
     backgroundColor: Colors.white,
