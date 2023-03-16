@@ -1,5 +1,5 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
-import 'package:webrtc_flutter/domain/entities/user/room.dart';
+import 'package:webrtc_flutter/domain/entities/room/room.dart';
 import 'package:webrtc_flutter/domain/entities/user/user.dart';
 
 part 'home_state.freezed.dart';

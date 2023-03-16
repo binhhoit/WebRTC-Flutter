@@ -35,7 +35,7 @@ class _CallGroupScreenState extends State<CallGroupScreen> {
   @override
   Widget build(BuildContext context) {
     return BlocProvider<CallGroupBloc>(
-      create: injector.get(),
+      create: (context) => injector.get(),
       child: BodyCallBody(
           host: widget.host,
           to: widget.to,

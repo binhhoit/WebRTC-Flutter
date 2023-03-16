@@ -40,6 +40,7 @@ class _BodyCallBody extends State<BodyCallBody> with SingleTickerProviderStateMi
   Session? _session;
   DesktopCapturerSource? selected_source_;
   late AnimationController _animationController;
+  late CallGroupBloc _bloc;
 
   Timer? _timer;
   int _seconds = 0;
@@ -49,6 +50,7 @@ class _BodyCallBody extends State<BodyCallBody> with SingleTickerProviderStateMi
   @override
   initState() {
     super.initState();
+    _bloc = context.read<CallGroupBloc>();
     initRenderers();
     _connect(context);
     _animationController = AnimationController(vsync: this, duration: Duration(seconds: 1));
@@ -155,6 +157,8 @@ class _BodyCallBody extends State<BodyCallBody> with SingleTickerProviderStateMi
           Navigator.pop(context);
           break;
         case CallState.CallStateInvite:
+          var ids = widget.to.map((e) => e.id);
+          await _bloc.createRoom(session.sid, ids.toList());
           _showInviteDialog();
           break;
         case CallState.CallStateConnected:

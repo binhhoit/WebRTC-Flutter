@@ -2,7 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fireAuth;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
-import 'package:webrtc_flutter/domain/entities/user/room.dart';
+import 'package:webrtc_flutter/domain/entities/room/room.dart';
 import 'package:webrtc_flutter/domain/entities/user/user.dart';
 import 'package:webrtc_flutter/platform/config/build_config.dart';
 import 'package:webrtc_flutter/platform/local/preferences/preference_manager.dart';

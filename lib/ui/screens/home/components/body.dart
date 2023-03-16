@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:fluttertoast/fluttertoast.dart';
-import 'package:webrtc_flutter/domain/entities/user/room.dart';
+import 'package:webrtc_flutter/domain/entities/room/room.dart';
 import 'package:webrtc_flutter/domain/entities/user/user.dart';
 import 'package:webrtc_flutter/ui/screens/call_group/call_group_screen.dart';
 import 'package:webrtc_flutter/ui/screens/call_sample/call_screen.dart';
