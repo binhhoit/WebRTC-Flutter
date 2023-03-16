@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:fluttertoast/fluttertoast.dart';
+import 'package:webrtc_flutter/domain/entities/user/room.dart';
 import 'package:webrtc_flutter/domain/entities/user/user.dart';
+import 'package:webrtc_flutter/ui/screens/call_group/call_group_screen.dart';
 import 'package:webrtc_flutter/ui/screens/call_sample/call_screen.dart';
 import 'package:webrtc_flutter/ui/screens/home/bloc/home_bloc.dart';
 import 'package:webrtc_flutter/ui/screens/home/bloc/home_state.dart';
@@ -17,6 +20,7 @@ class BodyHome extends StatefulWidget {
 class _BodyHome extends State<BodyHome> {
   HomeBloc? _bloc;
   var users = <User>[];
+  var rooms = <Room>[];
 
   @override
   void initState() {
@@ -32,9 +36,14 @@ class _BodyHome extends State<BodyHome> {
           : ListView.builder(
               shrinkWrap: true,
               padding: const EdgeInsets.all(0.0),
-              itemCount: users.length,
+              itemCount: users.length + rooms.length,
               itemBuilder: (context, i) {
-                return _buildRow(context, users[i]);
+                var lastIndexRoom = rooms.length - 1;
+                if (lastIndexRoom - i >= 0) {
+                  return _buildRoomRow(context, rooms[i]);
+                } else {
+                  return _buildRow(context, users[i - rooms.length]);
+                }
               });
     }, listener: (context, state) {
       if (state is UserData) {
@@ -43,6 +52,12 @@ class _BodyHome extends State<BodyHome> {
         });
       } else if (state is CurrentUser) {
         widget.getCurrentUser(state.user);
+      } else if (state is RoomData) {
+        setState(() {
+          rooms = state.rooms;
+        });
+      } else if (state is HomeError) {
+        Fluttertoast.showToast(msg: state.message);
       }
     });
   }
@@ -74,6 +89,30 @@ class _BodyHome extends State<BodyHome> {
                       )));
         },
         trailing: const Icon(Icons.video_call_outlined),
+      ),
+      const Divider()
+    ]);
+  }
+
+  _buildRoomRow(context, item) {
+    return ListBody(children: <Widget>[
+      ListTile(
+        leading: const Icon(Icons.video_call),
+        title: Text("Room: ${item.id}"),
+        subtitle: const Text("Join now"),
+        onTap: () {
+          Navigator.push(
+              context,
+              MaterialPageRoute<void>(
+                  builder: (_) => CallGroupScreen(
+                        host: _bloc?.getBaseUrlServer() ?? "",
+                        to: [item],
+                        session: null,
+                        offer: null,
+                        isRequestCall: true,
+                      )));
+        },
+        trailing: const Icon(Icons.arrow_right),
       ),
       const Divider()
     ]);

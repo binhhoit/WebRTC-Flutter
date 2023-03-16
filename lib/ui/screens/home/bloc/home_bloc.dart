@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fireAuth;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
+import 'package:webrtc_flutter/domain/entities/user/room.dart';
 import 'package:webrtc_flutter/domain/entities/user/user.dart';
 import 'package:webrtc_flutter/platform/config/build_config.dart';
 import 'package:webrtc_flutter/platform/local/preferences/preference_manager.dart';
@@ -12,14 +13,15 @@ class HomeBloc extends Cubit<HomeState> {
   BuildConfig buildConfig;
 
   HomeBloc(this.buildConfig) : super(const HomeState.init()) {
-    getListUser();
+    _getListUser();
+    _getListRoom();
   }
 
   final databaseReference = FirebaseFirestore.instance;
 
   String getBaseUrlServer() => buildConfig.baseUrl;
 
-  Future<void> getListUser() async {
+  Future<void> _getListUser() async {
     emit(const HomeState.loading());
     var id = fireAuth.FirebaseAuth.instance.currentUser?.uid ?? "";
     try {
@@ -36,6 +38,25 @@ class HomeBloc extends Cubit<HomeState> {
         }
 
         emit(HomeState.users(users));
+      }, onError: (e) {
+        print(e);
+        emit(HomeState.error(e.toString()));
+      });
+    } catch (e) {
+      emit(HomeState.error(e.toString()));
+    }
+  }
+
+  Future<void> _getListRoom() async {
+    emit(const HomeState.loading());
+    try {
+      databaseReference.collection('rooms').snapshots().listen((snapshot) {
+        final rooms = <Room>[];
+        for (var doc in snapshot.docs) {
+          final room = Room.fromJson(doc.data());
+          rooms.add(room);
+        }
+        emit(HomeState.rooms(rooms));
       }, onError: (e) {
         print(e);
         emit(HomeState.error(e.toString()));
