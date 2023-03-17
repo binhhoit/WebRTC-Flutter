@@ -35,7 +35,7 @@ class BodyCallBody extends StatefulWidget {
 class _BodyCallBody extends State<BodyCallBody> with SingleTickerProviderStateMixin {
   Signaling? _signaling;
   RTCVideoRenderer _localRenderer = RTCVideoRenderer();
-  RTCVideoRenderer _remoteRenderer = RTCVideoRenderer();
+  Map<String, RTCVideoRenderer> _remoteRenderers = {};
   bool _inCalling = false;
   Session? _session;
   DesktopCapturerSource? selected_source_;
@@ -51,15 +51,24 @@ class _BodyCallBody extends State<BodyCallBody> with SingleTickerProviderStateMi
   initState() {
     super.initState();
     _bloc = context.read<CallGroupBloc>();
+    _createRemoteRenderers();
     initRenderers();
     _connect(context);
     _animationController = AnimationController(vsync: this, duration: Duration(seconds: 1));
     _animationController.repeat(reverse: true);
   }
 
+  _createRemoteRenderers() {
+    for (var user in widget.to) {
+      _remoteRenderers[user.id] = RTCVideoRenderer();
+    }
+  }
+
   initRenderers() async {
     await _localRenderer.initialize();
-    await _remoteRenderer.initialize();
+    _remoteRenderers.forEach((key, value) async {
+      await value.initialize();
+    });
   }
 
   @override
@@ -68,12 +77,15 @@ class _BodyCallBody extends State<BodyCallBody> with SingleTickerProviderStateMi
     _signaling?.close();
     _animationController.dispose();
     _localRenderer.dispose();
-    _remoteRenderer.dispose();
+    _remoteRenderers.forEach((key, value) async {
+      await value.dispose();
+    });
     _timer?.cancel();
   }
 
   void _connect(BuildContext context) async {
     _signaling ??= Signaling(widget.host, context)..connect();
+    _bloc.setSignaling(_signaling!);
     _signaling?.onSignalingStateChange = (SignalingState state) {
       switch (state) {
         case SignalingState.ConnectionClosed:
@@ -109,9 +121,9 @@ class _BodyCallBody extends State<BodyCallBody> with SingleTickerProviderStateMi
             _signaling?.onSessionScreenReady(id.toList(),
                 nameCaller: userCall.name, avatar: userCall.avatar);
           } else {
-            await _signaling?.handleSignalingCommand(SignalingCommand.OFFER, widget.offer ?? '',
+            /* await _signaling?.handleSignalingCommand(SignalingCommand.OFFER, widget.offer ?? '',
                 sessionId: widget.session);
-            _accept();
+            _accept();*/
           }
           break;
         case WebRTCSessionState.Creating:
@@ -150,7 +162,9 @@ class _BodyCallBody extends State<BodyCallBody> with SingleTickerProviderStateMi
         case CallState.CallStateBye:
           setState(() {
             _localRenderer.srcObject = null;
-            _remoteRenderer.srcObject = null;
+            _remoteRenderers.forEach((key, value) async {
+              value.srcObject = null;
+            });
             _inCalling = false;
             _session = null;
           });
@@ -171,22 +185,23 @@ class _BodyCallBody extends State<BodyCallBody> with SingleTickerProviderStateMi
       }
     };
 
-    _signaling?.onPeersUpdate = ((event) {
-      setState(() {});
-    });
+    _signaling?.sendData = (sessionId, to, data) async {
+      await _bloc.sentData(sessionId, to, data);
+    };
 
     _signaling?.onLocalStream = ((stream) {
       _localRenderer.srcObject = stream;
       setState(() {});
     });
 
-    _signaling?.onAddRemoteStream = ((_, stream) {
-      _remoteRenderer.srcObject = stream;
+    _signaling?.onAddRemoteStream = ((_, stream, userId) {
+      _remoteRenderers[userId]?.srcObject = stream;
+
       if (mounted) setState(() {});
     });
 
-    _signaling?.onRemoveRemoteStream = ((_, stream) {
-      _remoteRenderer.srcObject = null;
+    _signaling?.onRemoveRemoteStream = ((_, stream, userId) {
+      _remoteRenderers[userId]?.srcObject = null;
     });
   }
 
@@ -397,8 +412,10 @@ class _BodyCallBody extends State<BodyCallBody> with SingleTickerProviderStateMi
                                 margin: EdgeInsets.fromLTRB(0.0, 0.0, 0.0, 0.0),
                                 width: MediaQuery.of(context).size.width,
                                 height: MediaQuery.of(context).size.height,
-                                child: RTCVideoView(_remoteRenderer),
                                 decoration: BoxDecoration(color: Colors.black54),
+                                child: _remoteRenderers[widget.to.first.id] != null
+                                    ? RTCVideoView(_remoteRenderers[widget.to.first.id]!)
+                                    : Container(),
                               )),
                           Positioned(
                             left: 20.0,

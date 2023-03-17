@@ -33,10 +33,10 @@ class _HomeScreen extends State<HomeScreen> {
         email: "email",
         name: "Omar Levin"));
     users.add(User(
-        id: "dQw6jgPNeshh8AEKsOr9yPpTOpp1",
+        id: "IRbuJeYik4SSasKRWLQ54ACzU3h1",
         avatar: "https://hoala.vn/upload/img/images/hoa_thanh_luong_11.jpg",
         email: "email",
-        name: "Emerson Herwitz"));
+        name: "User 1"));
     users.add(User(
         id: "Hbx4MrsV7haempcr7JRVbeQh1lD3",
         avatar: "https://hoala.vn/upload/img/images/hoa_thanh_luong_11.jpg",
@@ -47,6 +47,7 @@ class _HomeScreen extends State<HomeScreen> {
         avatar: "https://hoala.vn/upload/img/images/hoa_thanh_luong_11.jpg",
         email: "email",
         name: "Stephen"));
+    users.add(currentUser);
     return users;
   }
 

@@ -10,3 +10,7 @@ String decompress(String input) {
   final decompressed = gzip.decode(byteArray);
   return latin1.decode(decompressed);
 }
+
+String getSeparatedMessage(String text) {
+  return text.split(' ').skip(1).join(' ');
+}

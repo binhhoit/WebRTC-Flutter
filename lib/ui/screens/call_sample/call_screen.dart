@@ -165,21 +165,17 @@ class _CallScreenState extends State<CallScreen> with SingleTickerProviderStateM
       }
     };
 
-    _signaling?.onPeersUpdate = ((event) {
-      setState(() {});
-    });
-
     _signaling?.onLocalStream = ((stream) {
       _localRenderer.srcObject = stream;
       setState(() {});
     });
 
-    _signaling?.onAddRemoteStream = ((_, stream) {
+    _signaling?.onAddRemoteStream = ((_, stream, __) {
       _remoteRenderer.srcObject = stream;
       if (mounted) setState(() {});
     });
 
-    _signaling?.onRemoveRemoteStream = ((_, stream) {
+    _signaling?.onRemoveRemoteStream = ((_, stream, __) {
       _remoteRenderer.srcObject = null;
     });
   }

@@ -31,11 +31,11 @@ enum VideoSource {
 }
 
 class Session {
-  Session({required this.sid, required this.pid});
+  Session({required this.sid, required this.pid, required this.to});
   String pid;
   String sid;
-  RTCPeerConnection? pc;
-  RTCDataChannel? dc;
+  List<String>? to;
+  Map<String, RTCPeerConnection>? pcs;
   List<RTCIceCandidate> remoteCandidates = [];
 }
 
@@ -50,7 +50,7 @@ class Signaling {
   var _host;
   Map<String, Session> _sessions = {};
   MediaStream? _localStream;
-  List<MediaStream> _remoteStreams = <MediaStream>[];
+
   List<RTCRtpSender> _senders = <RTCRtpSender>[];
   VideoSource _videoSource = VideoSource.Camera;
 
@@ -58,9 +58,9 @@ class Signaling {
   Function(WebRTCSessionState state)? onWebRTCSessionState;
   Function(Session session, CallState state)? onCallStateChange;
   Function(MediaStream stream)? onLocalStream;
-  Function(Session session, MediaStream stream)? onAddRemoteStream;
-  Function(Session session, MediaStream stream)? onRemoveRemoteStream;
-  Function(dynamic event)? onPeersUpdate;
+  Function(Session session, MediaStream stream, String userId)? onAddRemoteStream;
+  Function(Session session, MediaStream stream, String userId)? onRemoveRemoteStream;
+  Function(String, String, String)? sendData;
 
   String get sdpSemantics => 'unified-plan';
   String? offer;
@@ -129,9 +129,9 @@ class Signaling {
   void invite(
       String media, bool useScreen, List<String> to, String from, nameCaller, avatar) async {
     var peerId = randomNumeric(12);
-    var sessionId = '$_selfId-$peerId';
+    var sessionId = /*'$_selfId-$peerId';*/ 'dQw6jgPNeshh8AEKsOr9yPpTOpp1-426658330133';
     Session session = await _createSession(null,
-        peerId: peerId, sessionId: sessionId, media: media, screenSharing: useScreen);
+        peerId: peerId, sessionId: sessionId, media: media, screenSharing: useScreen, userIds: to);
     _sessions[sessionId] = session;
     _createOffer(session, media, to, from, nameCaller, avatar);
     onCallStateChange?.call(session, CallState.CallStateNew);
@@ -154,12 +154,12 @@ class Signaling {
     }
   }
 
-  void accept(String sessionId) {
+  void accept(String sessionId, {answerForId}) {
     var session = _sessions[sessionId];
     if (session == null) {
       return;
     }
-    _createAnswer(session, 'video');
+    _createAnswer(session, 'video', answerForId: answerForId);
   }
 
   void reject(String sessionId) {
@@ -191,23 +191,24 @@ class Signaling {
   }
 
   //TODO: handle sent event to server
-  Future<void> handleSignalingCommand(SignalingCommand command, String text, {sessionId}) async {
+  Future<void> handleSignalingCommand(SignalingCommand command, String text,
+      {sessionId, to, offerOfId, answerOfId, iceOfId}) async {
     var value = _getSeparatedMessage(text);
     print("received signaling: $command $value");
     switch (command) {
       case SignalingCommand.OFFER:
         {
-          await handleOffer(value, sessionId);
+          await handleOffer(value, sessionId, to: to, offerOfId: offerOfId);
         }
         break;
       case SignalingCommand.ANSWER:
         {
-          handleAnswer(value, sessionId);
+          handleAnswer(value, sessionId, answerOfId: answerOfId);
         }
         break;
       case SignalingCommand.ICE:
         {
-          handleIce(value, sessionId);
+          handleIce(value, sessionId, iceOfId);
         }
         break;
       default:
@@ -229,19 +230,25 @@ class Signaling {
     }
   }
 
-  Future<void> handleOffer(String value, String sessionId) async {
+  Future<void> handleOffer(String value, String sessionId, {to, offerOfId}) async {
     print("[SDP] handle offer: $value");
     offer = value;
     var session = _sessions[sessionId];
     var newSession = await _createSession(session,
-        peerId: randomNumeric(12), sessionId: sessionId, media: 'video', screenSharing: false);
+        peerId: randomNumeric(12),
+        sessionId: sessionId,
+        media: 'video',
+        screenSharing: false,
+        userIds: to);
     _sessions[sessionId] = newSession;
-    await newSession.pc
+    await newSession.pcs?[offerOfId]
         ?.setRemoteDescription(RTCSessionDescription(value.mungeCodecs(), Type.OFFER.name));
 
-    if (newSession.remoteCandidates.length > 0) {
+    if (newSession.remoteCandidates.isNotEmpty) {
       newSession.remoteCandidates.forEach((candidate) async {
-        await newSession.pc?.addCandidate(candidate);
+        newSession.pcs?.forEach((key, value) async {
+          await value.addCandidate(candidate);
+        });
       });
       newSession.remoteCandidates.clear();
     }
@@ -249,28 +256,28 @@ class Signaling {
     onCallStateChange?.call(newSession, CallState.CallStateRinging);
   }
 
-  void handleAnswer(String sdp, String sessionId) {
+  void handleAnswer(String sdp, String sessionId, {answerOfId}) {
     print("[SDP] handle answer: $sdp");
     //Note Get Map Data [sessonID sdp]
     var session = _sessions[sessionId];
-    session?.pc?.setRemoteDescription(
+    session?.pcs?[answerOfId]?.setRemoteDescription(
         RTCSessionDescription(sdp.mungeCodecs(), Type.ANSWER.name.toLowerCase()));
     onCallStateChange?.call(session!, CallState.CallStateConnected);
   }
 
-  Future<void> handleIce(String iceMessage, String sessionId) async {
+  Future<void> handleIce(String iceMessage, String sessionId, iceOfId) async {
     try {
       var session = _sessions[sessionId];
       var iceArray = iceMessage.split(ICE_SEPARATOR);
       RTCIceCandidate candidate = RTCIceCandidate(iceArray[2], iceArray[0], int.parse(iceArray[1]));
       if (session != null) {
-        if (session.pc != null) {
-          await session.pc?.addCandidate(candidate);
+        if (session.pcs != null) {
+          await session.pcs?[iceOfId]?.addCandidate(candidate);
         } else {
           session.remoteCandidates.add(candidate);
         }
       } else {
-        _sessions[sessionId] = Session(pid: _selfId, sid: sessionId)
+        _sessions[sessionId] = Session(pid: _selfId, sid: sessionId, to: [])
           ..remoteCandidates.add(candidate);
       }
     } catch (e) {
@@ -382,120 +389,88 @@ class Signaling {
     required String sessionId,
     required String media,
     required bool screenSharing,
+    required List<String> userIds,
   }) async {
-    var newSession = session ?? Session(sid: sessionId, pid: peerId);
-    if (media != 'data') _localStream = await createStream(media, screenSharing, context: _context);
-    print(_iceServers);
-    RTCPeerConnection pc = await createPeerConnection({
-      ..._iceServers,
-      ...{'sdpSemantics': sdpSemantics}
-    }, _config);
+    var newSession = session ?? Session(sid: sessionId, pid: peerId, to: userIds);
+    var pcs = <String, RTCPeerConnection>{};
     if (media != 'data') {
-      switch (sdpSemantics) {
-        case 'plan-b':
-          pc.onAddStream = (MediaStream stream) {
-            onAddRemoteStream?.call(newSession, stream);
-            _remoteStreams.add(stream);
-          };
-          await pc.addStream(_localStream!);
-          break;
-        case 'unified-plan':
-          // Unified-Plan
-          pc.onTrack = (event) {
-            if (event.track.kind == 'video') {
-              onAddRemoteStream?.call(newSession, event.streams[0]);
-            }
-          };
-          _localStream!.getTracks().forEach((track) async {
-            _senders.add(await pc.addTrack(track, _localStream!));
-          });
-          break;
-      }
-
-      // Unified-Plan: Simuclast
-      /*
-      await pc.addTransceiver(
-        track: _localStream.getAudioTracks()[0],
-        init: RTCRtpTransceiverInit(
-            direction: TransceiverDirection.SendOnly, streams: [_localStream]),
-      );
-
-      await pc.addTransceiver(
-        track: _localStream.getVideoTracks()[0],
-        init: RTCRtpTransceiverInit(
-            direction: TransceiverDirection.SendOnly,
-            streams: [
-              _localStream
-            ],
-            sendEncodings: [
-              RTCRtpEncoding(rid: 'f', active: true),
-              RTCRtpEncoding(
-                rid: 'h',
-                active: true,
-                scaleResolutionDownBy: 2.0,
-                maxBitrate: 150000,
-              ),
-              RTCRtpEncoding(
-                rid: 'q',
-                active: true,
-                scaleResolutionDownBy: 4.0,
-                maxBitrate: 100000,
-              ),
-            ]),
-      );*/
-      /*
-        var sender = pc.getSenders().find(s => s.track.kind == "video");
-        var parameters = sender.getParameters();
-        if(!parameters)
-          parameters = {};
-        parameters.encodings = [
-          { rid: "h", active: true, maxBitrate: 900000 },
-          { rid: "m", active: true, maxBitrate: 300000, scaleResolutionDownBy: 2 },
-          { rid: "l", active: true, maxBitrate: 100000, scaleResolutionDownBy: 4 }
-        ];
-        sender.setParameters(parameters);
-      */
+      _localStream = await createStream(media, screenSharing, context: _context);
     }
-    pc.onIceCandidate = (candidate) async {
-      if (candidate == null) {
-        print('onIceCandidate: complete!');
-        return;
+    for (var userId in userIds) {
+      if (userId != _selfId) {
+        List<MediaStream> _remoteStreams = <MediaStream>[];
+        print(_iceServers);
+        RTCPeerConnection pc = await createPeerConnection({
+          ..._iceServers,
+          ...{'sdpSemantics': sdpSemantics}
+        }, _config);
+        if (media != 'data') {
+          switch (sdpSemantics) {
+            case 'plan-b':
+              pc.onAddStream = (MediaStream stream) {
+                onAddRemoteStream?.call(newSession, stream, userId);
+                _remoteStreams.add(stream);
+              };
+              await pc.addStream(_localStream!);
+              break;
+            case 'unified-plan':
+              // Unified-Plan
+              pc.onTrack = (event) {
+                if (event.track.kind == 'video') {
+                  onAddRemoteStream?.call(newSession, event.streams[0], userId);
+                }
+              };
+              _localStream!.getTracks().forEach((track) async {
+                _senders.add(await pc.addTrack(track, _localStream!));
+              });
+              break;
+          }
+        }
+        pc.onIceCandidate = (candidate) async {
+          if (candidate == null) {
+            print('onIceCandidate: complete!');
+            return;
+          }
+          // This delay is needed to allow enough time to try an ICE candidate
+          // before skipping to the next one. 1 second is just an heuristic value
+          // and should be thoroughly tested in your own environment.
+
+          await Future.delayed(
+              const Duration(seconds: 1),
+              () => _send(
+                  SignalingCommand.ICE.name.toLowerCase(),
+                  "${candidate.sdpMid}$ICE_SEPARATOR${candidate.sdpMLineIndex}$ICE_SEPARATOR${candidate.candidate}",
+                  userId,
+                  _selfId,
+                  sessionId));
+        };
+
+        pc.onIceConnectionState = (state) {};
+
+        pc.onRemoveStream = (stream) {
+          onRemoveRemoteStream?.call(newSession, stream, userId);
+          _remoteStreams.removeWhere((it) {
+            return (it.id == stream.id);
+          });
+        };
+        pcs[userId] = pc;
       }
-      // This delay is needed to allow enough time to try an ICE candidate
-      // before skipping to the next one. 1 second is just an heuristic value
-      // and should be thoroughly tested in your own environment.
-
-      await Future.delayed(
-          const Duration(seconds: 1),
-          () => _send(
-              SignalingCommand.ICE.name.toLowerCase(),
-              "${candidate.sdpMid}$ICE_SEPARATOR${candidate.sdpMLineIndex}$ICE_SEPARATOR${candidate.candidate}",
-              [],
-              '',
-              sessionId));
-    };
-
-    pc.onIceConnectionState = (state) {};
-
-    pc.onRemoveStream = (stream) {
-      onRemoveRemoteStream?.call(newSession, stream);
-      _remoteStreams.removeWhere((it) {
-        return (it.id == stream.id);
-      });
-    };
-
-    newSession.pc = pc;
+    }
+    newSession.pcs = pcs;
     return newSession;
   }
 
   Future<void> _createOffer(
       Session session, String media, List<String> to, String from, nameCaller, avatar) async {
     try {
-      RTCSessionDescription s =
-          await session.pc!.createOffer(media == 'data' ? _dcConstraints : {});
-      await session.pc!.setLocalDescription(_fixSdp(s));
-      _send(SignalingCommand.OFFER.name, s.sdp, to, from, session.sid,
-          nameCaller: nameCaller, avatar: avatar);
+      session.pcs?.forEach((userId, pc) async {
+        if (userId != from) {
+          RTCSessionDescription s = await pc.createOffer(media == 'data' ? _dcConstraints : {});
+          await pc.setLocalDescription(_fixSdp(s));
+          _send(SignalingCommand.OFFER.name, s.sdp, userId, from, session.sid,
+              nameCaller: nameCaller, avatar: avatar);
+        }
+      });
     } catch (e) {
       print(e.toString());
     }
@@ -507,12 +482,14 @@ class Signaling {
     return s;
   }
 
-  Future<void> _createAnswer(Session session, String media) async {
+  Future<void> _createAnswer(Session session, String media, {answerForId}) async {
     try {
-      RTCSessionDescription s =
-          await session.pc!.createAnswer(media == 'data' ? _dcConstraints : {});
-      await session.pc!.setLocalDescription(_fixSdp(s));
-      _send(SignalingCommand.ANSWER.name, s.sdp, [], '', session.sid);
+      var pc = session.pcs?[answerForId];
+      if (pc != null) {
+        RTCSessionDescription s = await pc.createAnswer(media == 'data' ? _dcConstraints : {});
+        await pc.setLocalDescription(_fixSdp(s));
+        _send(SignalingCommand.ANSWER.name, s.sdp, answerForId, '', session.sid);
+      }
     } catch (e) {
       print(e.toString());
     }
@@ -528,7 +505,11 @@ class Signaling {
     request["avatar"] = avatar;
 
     print("[sendCommand] -->${_encoder.convert(request)}");
-    _socket?.send(_encoder.convert(request));
+    if ([SignalingCommand.OFFER.name, SignalingCommand.ANSWER.name, SignalingCommand.ICE.name]
+        .contains(event.toUpperCase())) {
+      sendData?.call(sessionId, to, "$event $data");
+    }
+    //_socket?.send(_encoder.convert(request));
   }
 
   Future<void> _cleanSessions() async {
@@ -540,8 +521,9 @@ class Signaling {
       _localStream = null;
     }
     _sessions.forEach((key, sess) async {
-      await sess.pc?.close();
-      await sess.dc?.close();
+      sess.pcs?.forEach((key, pc) async {
+        await pc.close();
+      });
     });
     _sessions.clear();
   }
@@ -566,8 +548,9 @@ class Signaling {
     await _localStream?.dispose();
     _localStream = null;
 
-    await session.pc?.close();
-    await session.dc?.close();
+    session.pcs?.forEach((key, pc) async {
+      await pc.close();
+    });
     _senders.clear();
     _videoSource = VideoSource.Camera;
   }

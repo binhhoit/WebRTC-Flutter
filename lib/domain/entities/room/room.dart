@@ -9,7 +9,10 @@ class Room extends HiveObject with _$Room {
   Room._();
 
   @HiveType(typeId: 1, adapterName: 'RoomAdapter')
-  factory Room({@HiveField(0) required String id}) = _Room;
+  factory Room({
+    @HiveField(0) required String id,
+    @HiveField(1) required List<String> idUsers,
+  }) = _Room;
 
   factory Room.fromJson(Map<String, dynamic> json) => _$RoomFromJson(json);
 }

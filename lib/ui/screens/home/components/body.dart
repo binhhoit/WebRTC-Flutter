@@ -106,10 +106,10 @@ class _BodyHome extends State<BodyHome> {
               MaterialPageRoute<void>(
                   builder: (_) => CallGroupScreen(
                         host: _bloc?.getBaseUrlServer() ?? "",
-                        to: [item],
+                        to: [],
                         session: null,
                         offer: null,
-                        isRequestCall: true,
+                        isRequestCall: false,
                       )));
         },
         trailing: const Icon(Icons.arrow_right),
