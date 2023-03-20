@@ -23,7 +23,6 @@ class CallGroupBloc extends Cubit<CallGroupState> {
   CallGroupBloc(this.buildConfig) : super(const CallGroupState.init()) {
     getRooms('dQw6jgPNeshh8AEKsOr9yPpTOpp1-426658330133');
     getOfferOrAnswer('dQw6jgPNeshh8AEKsOr9yPpTOpp1-426658330133');
-    getIce('dQw6jgPNeshh8AEKsOr9yPpTOpp1-426658330133');
   }
 
   final databaseReference = FirebaseFirestore.instance;
@@ -58,6 +57,15 @@ class CallGroupBloc extends Cubit<CallGroupState> {
     }
   }
 
+  Future<void> deleteRoom(String idRoom) async {
+    try {
+      await _database.child('rooms/$idRoom').remove();
+      emit(const CallGroupState.closeRoom());
+    } catch (e) {
+      emit(CallGroupState.error(e.toString()));
+    }
+  }
+
   Future<void> sendOfferUser(String idRoom, String to, String offer) async {
     try {
       await _database.child('rooms/$idRoom/offer-answer/$to-$idCurrent').set({'offer': offer});
@@ -80,6 +88,7 @@ class CallGroupBloc extends Cubit<CallGroupState> {
     } catch (e) {
       emit(CallGroupState.error(e.toString()));
     }
+    getIce('dQw6jgPNeshh8AEKsOr9yPpTOpp1-426658330133');
   }
 
   Future<void> getOfferOrAnswer(String idRoom) async {
@@ -89,23 +98,22 @@ class CallGroupBloc extends Cubit<CallGroupState> {
         for (var offerOrAnswer in event.snapshot.children) {
           if (offerOrAnswer.key?.contains(idCurrent) == true) {
             var slipStringId = offerOrAnswer.key?.split('-');
-            var offerOfId = "";
+            var idUserHandle = "";
             slipStringId?.forEach((element) {
               if (!element.contains(idCurrent)) {
-                offerOfId = element;
+                idUserHandle = element;
               }
             });
             var offer = jsonDecode(jsonEncode(offerOrAnswer.value))['offer'];
             var answer = jsonDecode(jsonEncode(offerOrAnswer.value))['answer'];
-            var ice = jsonDecode(jsonEncode(offerOrAnswer.value))['ice'];
             if (idCurrent != slipStringId?.last && offer != null && !duplicate.contains(offer)) {
               await signaling.handleSignalingCommand(SignalingCommand.OFFER, offer,
-                  sessionId: idRoom, to: room.idUsers, offerOfId: offerOfId);
-              signaling.accept(idRoom, answerForId: offerOfId);
+                  sessionId: idRoom, to: room.idUsers, offerOfId: idUserHandle);
+              signaling.accept(idRoom, answerForId: idUserHandle);
               duplicate.add(offer);
             } else if (answer != null && !duplicate.contains(answer)) {
               await signaling.handleSignalingCommand(SignalingCommand.ANSWER, answer,
-                  sessionId: idRoom, to: room.idUsers, offerOfId: offerOfId);
+                  sessionId: idRoom, to: room.idUsers, answerOfId: idUserHandle);
               duplicate.add(answer);
             }
           }
@@ -135,9 +143,9 @@ class CallGroupBloc extends Cubit<CallGroupState> {
 
             for (var iceData in child.children) {
               var ice = jsonDecode(jsonEncode(iceData.value))['ice'];
-              if (idCurrent != slipStringId?.last && ice != null && !duplicate.contains(ice)) {
+              if (idCurrent == slipStringId?.first && ice != null && !duplicate.contains(ice)) {
                 await signaling.handleSignalingCommand(SignalingCommand.ICE, ice,
-                    sessionId: idRoom, to: room.idUsers, offerOfId: iceOfId);
+                    sessionId: idRoom, to: room.idUsers, iceOfId: iceOfId);
               }
             }
           }
@@ -153,9 +161,10 @@ class CallGroupBloc extends Cubit<CallGroupState> {
 
   Future<void> getRooms(String idRoom) async {
     try {
-      _database.child('rooms/$idRoom').onValue.listen((event) {
+      _database.child('rooms/$idRoom').once().then((event) {
         if (jsonDecode(jsonEncode(event.snapshot.value)) != null) {
           room = Room.fromJson(jsonDecode(jsonEncode(event.snapshot.value)));
+          emit(CallGroupState.room(room));
         }
       }, onError: (e) {
         print(e);
@@ -164,5 +173,11 @@ class CallGroupBloc extends Cubit<CallGroupState> {
     } catch (e) {
       emit(CallGroupState.error(e.toString()));
     }
+  }
+
+  @override
+  Future<void> close() {
+    print('call bloc is close');
+    return super.close();
   }
 }

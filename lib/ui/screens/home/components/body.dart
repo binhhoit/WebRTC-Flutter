@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:webrtc_flutter/domain/entities/room/room.dart';
 import 'package:webrtc_flutter/domain/entities/user/user.dart';
+import 'package:webrtc_flutter/platform/local/preferences/preference_manager.dart';
 import 'package:webrtc_flutter/ui/screens/call_group/call_group_screen.dart';
 import 'package:webrtc_flutter/ui/screens/call_sample/call_screen.dart';
 import 'package:webrtc_flutter/ui/screens/home/bloc/home_bloc.dart';
@@ -101,12 +102,18 @@ class _BodyHome extends State<BodyHome> {
         title: Text("Room: ${item.id}"),
         subtitle: const Text("Join now"),
         onTap: () {
+          var currentId = PreferenceManager.instance.currentUser.id;
+          if (!item.idUsers.contains(currentId)) {
+            Fluttertoast.showToast(msg: 'User is not in room');
+            return;
+          }
+          var users = item.idUsers.map((id) => User(id: id, avatar: '', email: '', name: ''));
           Navigator.push(
               context,
               MaterialPageRoute<void>(
                   builder: (_) => CallGroupScreen(
                         host: _bloc?.getBaseUrlServer() ?? "",
-                        to: [],
+                        to: users.toList(),
                         session: null,
                         offer: null,
                         isRequestCall: false,

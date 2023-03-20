@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 
 import '../../../utils/device_info.dart' if (dart.library.js) '../utils/device_info_web.dart';
 import '../../../utils/screen_select_dialog.dart';
@@ -36,7 +37,7 @@ class Session {
   String sid;
   List<String>? to;
   Map<String, RTCPeerConnection>? pcs;
-  List<RTCIceCandidate> remoteCandidates = [];
+  Map<String, List<RTCIceCandidate>> remoteCandidates = {};
 }
 
 class Signaling {
@@ -245,10 +246,9 @@ class Signaling {
         ?.setRemoteDescription(RTCSessionDescription(value.mungeCodecs(), Type.OFFER.name));
 
     if (newSession.remoteCandidates.isNotEmpty) {
-      newSession.remoteCandidates.forEach((candidate) async {
-        newSession.pcs?.forEach((key, value) async {
-          await value.addCandidate(candidate);
-        });
+      var candidates = newSession.remoteCandidates[offerOfId];
+      candidates?.forEach((candidate) async {
+        await newSession.pcs?[offerOfId]?.addCandidate(candidate);
       });
       newSession.remoteCandidates.clear();
     }
@@ -271,14 +271,14 @@ class Signaling {
       var iceArray = iceMessage.split(ICE_SEPARATOR);
       RTCIceCandidate candidate = RTCIceCandidate(iceArray[2], iceArray[0], int.parse(iceArray[1]));
       if (session != null) {
-        if (session.pcs != null) {
+        if (session.pcs?[iceOfId] != null) {
           await session.pcs?[iceOfId]?.addCandidate(candidate);
         } else {
-          session.remoteCandidates.add(candidate);
+          (session.remoteCandidates[iceOfId] as List<RTCIceCandidate>).add(candidate);
         }
       } else {
-        _sessions[sessionId] = Session(pid: _selfId, sid: sessionId, to: [])
-          ..remoteCandidates.add(candidate);
+        var session = _sessions[sessionId] = Session(pid: _selfId, sid: sessionId, to: []);
+        (session.remoteCandidates[iceOfId] as List<RTCIceCandidate>).add(candidate);
       }
     } catch (e) {
       print("error handleIce $e");
@@ -445,7 +445,13 @@ class Signaling {
                   sessionId));
         };
 
-        pc.onIceConnectionState = (state) {};
+        pc.onIceConnectionState = (state) {
+          print('[pc ice connect state] ${state.name}');
+        };
+        pc.onConnectionState = (state) {
+          Fluttertoast.showToast(msg: '[pc connect state] ${state.name.toString()}');
+          print('[pc connect state] ${state.name.toString()}');
+        };
 
         pc.onRemoveStream = (stream) {
           onRemoveRemoteStream?.call(newSession, stream, userId);
@@ -462,18 +468,18 @@ class Signaling {
 
   Future<void> _createOffer(
       Session session, String media, List<String> to, String from, nameCaller, avatar) async {
-    try {
-      session.pcs?.forEach((userId, pc) async {
-        if (userId != from) {
+    session.pcs?.forEach((userId, pc) async {
+      if (userId != from) {
+        try {
           RTCSessionDescription s = await pc.createOffer(media == 'data' ? _dcConstraints : {});
           await pc.setLocalDescription(_fixSdp(s));
           _send(SignalingCommand.OFFER.name, s.sdp, userId, from, session.sid,
               nameCaller: nameCaller, avatar: avatar);
+        } catch (e) {
+          print(e.toString());
         }
-      });
-    } catch (e) {
-      print(e.toString());
-    }
+      }
+    });
   }
 
   RTCSessionDescription _fixSdp(RTCSessionDescription s) {
@@ -496,7 +502,7 @@ class Signaling {
   }
 
   _send(event, data, to, from, sessionId, {nameCaller, avatar}) {
-    var request = Map();
+    var request = {};
     request["sessionId"] = sessionId;
     request["data"] = "$event $data";
     request["to"] = to;

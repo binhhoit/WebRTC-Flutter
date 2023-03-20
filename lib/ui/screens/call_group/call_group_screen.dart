@@ -2,7 +2,6 @@ import 'dart:core';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:webrtc_flutter/domain/entities/user/user.dart';
 import 'package:webrtc_flutter/injection.dart';
 import 'package:webrtc_flutter/ui/screens/call_group/bloc/call_group_bloc.dart';
 import 'package:webrtc_flutter/ui/screens/call_group/components/call_group_body.dart';
@@ -10,7 +9,7 @@ import 'package:webrtc_flutter/ui/screens/call_group/components/call_group_body.
 class CallGroupScreen extends StatefulWidget {
   static String tag = 'call_group';
   final String host;
-  final List<User> to;
+  final to;
   final bool isRequestCall;
   final String? session;
   final String? offer;
