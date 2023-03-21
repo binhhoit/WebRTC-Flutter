@@ -33,8 +33,9 @@ class BodyCallBody extends StatefulWidget {
 
 class _BodyCallBody extends State<BodyCallBody> with SingleTickerProviderStateMixin {
   Signaling? _signaling;
-  RTCVideoRenderer _localRenderer = RTCVideoRenderer();
-  Map<String, RTCVideoRenderer> _remoteRenderers = {};
+  final RTCVideoRenderer _localRenderer = RTCVideoRenderer();
+  final Map<String, RTCVideoRenderer> _remoteRenderers = {};
+  final Map<String, RTCPeerConnectionState> _statePeerConnect = {};
   bool _inCalling = false;
   Session? _session;
   DesktopCapturerSource? selected_source_;
@@ -63,6 +64,7 @@ class _BodyCallBody extends State<BodyCallBody> with SingleTickerProviderStateMi
   _createRemoteRenderers() {
     for (var id in userIds) {
       _remoteRenderers[id] = RTCVideoRenderer();
+      _statePeerConnect[id] = RTCPeerConnectionState.RTCPeerConnectionStateNew;
     }
   }
 
@@ -207,6 +209,12 @@ class _BodyCallBody extends State<BodyCallBody> with SingleTickerProviderStateMi
     _signaling?.onRemoveRemoteStream = ((_, stream, userId) {
       _remoteRenderers[userId]?.srcObject = null;
     });
+
+    _signaling?.onConnectionState = (userId, state) {
+      setState(() {
+        _statePeerConnect[userId] = state;
+      });
+    };
   }
 
   _startTimer() {
@@ -366,12 +374,38 @@ class _BodyCallBody extends State<BodyCallBody> with SingleTickerProviderStateMi
     );
   }
 
+  List<Widget> _videoRenderCall(BuildContext context, width, height) {
+    List<Widget> viewRender = [];
+    for (var user in widget.to) {
+      if (user.id != PreferenceManager.instance.currentUser.id) {
+        var container = Container(
+          margin: const EdgeInsets.fromLTRB(0.0, 0.0, 0.0, 0.0),
+          width: width,
+          height: height,
+          decoration: const BoxDecoration(color: Colors.black54),
+          child: Stack(
+            children: [
+              RTCVideoView(_remoteRenderers[user.id]!),
+              Text(
+                "${user.name}\n${user.id}\n state:${_statePeerConnect[user.id]}",
+                style: const TextStyle(color: Colors.white),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        );
+        viewRender.add(container);
+      }
+    }
+
+    return viewRender;
+  }
+
   @override
   Widget build(BuildContext context) {
-    var width = MediaQuery.of(context).size.width / 2;
-    var height = MediaQuery.of(context).size.height / 2;
-
     return BlocConsumer<CallGroupBloc, CallGroupState>(builder: (context, state) {
+      var width = MediaQuery.of(context).size.width / 2;
+      var height = MediaQuery.of(context).size.height;
       return Scaffold(
           floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
           floatingActionButton: _inCalling
@@ -407,67 +441,24 @@ class _BodyCallBody extends State<BodyCallBody> with SingleTickerProviderStateMi
               : null,
           body: _inCalling
               ? OrientationBuilder(builder: (context, orientation) {
-                  return Container(
-                    child: Stack(children: <Widget>[
-                      GridView.count(
+                  return Stack(children: <Widget>[
+                    GridView.count(
                         crossAxisCount: 2,
-                        children: [
-                          Container(
-                            margin: EdgeInsets.fromLTRB(0.0, 0.0, 0.0, 0.0),
-                            width: width,
-                            height: height,
-                            decoration: BoxDecoration(color: Colors.black54),
-                            child: RTCVideoView(_remoteRenderers['LIacRUdwEUec0cQNK8AHEMd6GN12']!),
-                          ),
-                          Container(
-                            margin: EdgeInsets.fromLTRB(0.0, 0.0, 0.0, 0.0),
-                            width: width,
-                            height: height,
-                            decoration: BoxDecoration(color: Colors.black54),
-                            child: RTCVideoView(_remoteRenderers['Hbx4MrsV7haempcr7JRVbeQh1lD3']!),
-                          ),
-                          Container(
-                            margin: EdgeInsets.fromLTRB(0.0, 0.0, 0.0, 0.0),
-                            width: width,
-                            height: height,
-                            decoration: BoxDecoration(color: Colors.black54),
-                            child: RTCVideoView(_remoteRenderers['LG2LzJMv2NaE43lb1vlsfJgYA1s1']!),
-                          ),
-                          Container(
-                            margin: EdgeInsets.fromLTRB(0.0, 0.0, 0.0, 0.0),
-                            width: width,
-                            height: height,
-                            decoration: BoxDecoration(color: Colors.black54),
-                            child: RTCVideoView(_remoteRenderers['IRbuJeYik4SSasKRWLQ54ACzU3h1']!),
-                          ),
-                          Container(
-                            margin: EdgeInsets.fromLTRB(0.0, 0.0, 0.0, 0.0),
-                            width: width,
-                            height: height,
-                            decoration: BoxDecoration(color: Colors.black54),
-                            child: Text('1'),
-                          ),
-                          Container(
-                            margin: EdgeInsets.fromLTRB(0.0, 0.0, 0.0, 0.0),
-                            width: width,
-                            height: height,
-                            decoration: BoxDecoration(color: Colors.black54),
-                            child: Text('2'),
-                          )
-                        ],
+                        childAspectRatio: 2 / 3,
+                        mainAxisSpacing: 2,
+                        crossAxisSpacing: 2,
+                        children: _videoRenderCall(context, width, height)),
+                    Positioned(
+                      left: 20.0,
+                      top: 20.0,
+                      child: Container(
+                        width: orientation == Orientation.portrait ? 90.0 : 120.0,
+                        height: orientation == Orientation.portrait ? 120.0 : 90.0,
+                        child: RTCVideoView(_localRenderer, mirror: true),
+                        decoration: BoxDecoration(color: Colors.black54),
                       ),
-                      Positioned(
-                        left: 20.0,
-                        top: 20.0,
-                        child: Container(
-                          width: orientation == Orientation.portrait ? 90.0 : 120.0,
-                          height: orientation == Orientation.portrait ? 120.0 : 90.0,
-                          child: RTCVideoView(_localRenderer, mirror: true),
-                          decoration: BoxDecoration(color: Colors.black54),
-                        ),
-                      ),
-                    ]),
-                  );
+                    ),
+                  ]);
                 })
               : Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -482,7 +473,11 @@ class _BodyCallBody extends State<BodyCallBody> with SingleTickerProviderStateMi
     }, listener: (context, state) {
       if (state is CallGroupRoom) {
         userIds = state.room.idUsers;
+      } else if (state is InviteOtherConnect) {
+        Fluttertoast.showToast(msg: '[invite more]: ${state.userIds.length.toString()}');
       } else if (state is CloseRoom) {
+        //Remove later
+        _hangUp();
         Navigator.pop(context);
       }
     });

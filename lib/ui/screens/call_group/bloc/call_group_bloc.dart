@@ -5,6 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart' as fireAuth;
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
+import 'package:rxdart/rxdart.dart';
 import 'package:webrtc_flutter/domain/entities/room/room.dart';
 import 'package:webrtc_flutter/platform/config/build_config.dart';
 import 'package:webrtc_flutter/ui/screens/call_group/bloc/call_group_state.dart';
@@ -15,14 +16,15 @@ import 'package:webrtc_flutter/ui/screens/call_sample/signaling.dart';
 class CallGroupBloc extends Cubit<CallGroupState> {
   BuildConfig buildConfig;
   final DatabaseReference _database = FirebaseDatabase.instance.ref();
-  var idCurrent = fireAuth.FirebaseAuth.instance.currentUser?.uid ?? "";
+  final _idCurrent = fireAuth.FirebaseAuth.instance.currentUser?.uid ?? "";
+  final _connectSuccessWithUsers = <String, bool>{};
   late Signaling signaling;
   late Room room;
+  final BehaviorSubject<bool> _checkOffer = BehaviorSubject();
 
   var duplicate = <String>[];
   CallGroupBloc(this.buildConfig) : super(const CallGroupState.init()) {
     getRooms('dQw6jgPNeshh8AEKsOr9yPpTOpp1-426658330133');
-    getOfferOrAnswer('dQw6jgPNeshh8AEKsOr9yPpTOpp1-426658330133');
   }
 
   final databaseReference = FirebaseFirestore.instance;
@@ -48,7 +50,7 @@ class CallGroupBloc extends Cubit<CallGroupState> {
     try {
       await _database
           .child('rooms/$idRoom')
-          .update({'id': idRoom, 'idUsers': idUsers, 'from': idCurrent});
+          .update({'id': idRoom, 'idUsers': idUsers, 'from': _idCurrent});
       getRooms(idRoom);
       getOfferOrAnswer(idRoom);
       getIce(idRoom);
@@ -59,6 +61,7 @@ class CallGroupBloc extends Cubit<CallGroupState> {
 
   Future<void> deleteRoom(String idRoom) async {
     try {
+      await sendByeUser(idRoom);
       await _database.child('rooms/$idRoom').remove();
       emit(const CallGroupState.closeRoom());
     } catch (e) {
@@ -68,15 +71,17 @@ class CallGroupBloc extends Cubit<CallGroupState> {
 
   Future<void> sendOfferUser(String idRoom, String to, String offer) async {
     try {
-      await _database.child('rooms/$idRoom/offer-answer/$to-$idCurrent').set({'offer': offer});
+      await _database.child('rooms/$idRoom/offer-answer/$to-$_idCurrent').set({'offer': offer});
     } catch (e) {
       emit(CallGroupState.error(e.toString()));
     }
+    _connectSuccessWithUsers[to] = true;
+    _checkOffer.value = true;
   }
 
   Future<void> sendICEUser(String idRoom, String to, String offer) async {
     try {
-      await _database.child('rooms/$idRoom/ice/$to-$idCurrent').push().update({'ice': offer});
+      await _database.child('rooms/$idRoom/ice/$to-$_idCurrent').push().update({'ice': offer});
     } catch (e) {
       emit(CallGroupState.error(e.toString()));
     }
@@ -84,11 +89,15 @@ class CallGroupBloc extends Cubit<CallGroupState> {
 
   Future<void> sendAnswerUser(String idRoom, String to, String answer) async {
     try {
-      await _database.child('rooms/$idRoom/offer-answer/$idCurrent-$to').update({'answer': answer});
+      await _database
+          .child('rooms/$idRoom/offer-answer/$_idCurrent-$to')
+          .update({'answer': answer});
     } catch (e) {
       emit(CallGroupState.error(e.toString()));
     }
-    getIce('dQw6jgPNeshh8AEKsOr9yPpTOpp1-426658330133');
+    getIce(idRoom);
+    _connectSuccessWithUsers[to] = true;
+    _checkOffer.value = true;
   }
 
   Future<void> getOfferOrAnswer(String idRoom) async {
@@ -96,17 +105,17 @@ class CallGroupBloc extends Cubit<CallGroupState> {
     try {
       _database.child('rooms/$idRoom/offer-answer').onValue.listen((event) async {
         for (var offerOrAnswer in event.snapshot.children) {
-          if (offerOrAnswer.key?.contains(idCurrent) == true) {
+          if (offerOrAnswer.key?.contains(_idCurrent) == true) {
             var slipStringId = offerOrAnswer.key?.split('-');
             var idUserHandle = "";
             slipStringId?.forEach((element) {
-              if (!element.contains(idCurrent)) {
+              if (!element.contains(_idCurrent)) {
                 idUserHandle = element;
               }
             });
             var offer = jsonDecode(jsonEncode(offerOrAnswer.value))['offer'];
             var answer = jsonDecode(jsonEncode(offerOrAnswer.value))['answer'];
-            if (idCurrent != slipStringId?.last && offer != null && !duplicate.contains(offer)) {
+            if (_idCurrent != slipStringId?.last && offer != null && !duplicate.contains(offer)) {
               await signaling.handleSignalingCommand(SignalingCommand.OFFER, offer,
                   sessionId: idRoom, to: room.idUsers, offerOfId: idUserHandle);
               signaling.accept(idRoom, answerForId: idUserHandle);
@@ -132,18 +141,18 @@ class CallGroupBloc extends Cubit<CallGroupState> {
     try {
       _database.child('rooms/$idRoom/ice').onValue.listen((event) async {
         for (var child in event.snapshot.children) {
-          if (child.key?.contains(idCurrent) == true) {
+          if (child.key?.contains(_idCurrent) == true) {
             var slipStringId = child.key?.split('-');
             var iceOfId = "";
             slipStringId?.forEach((element) {
-              if (!element.contains(idCurrent)) {
+              if (!element.contains(_idCurrent)) {
                 iceOfId = element;
               }
             });
 
             for (var iceData in child.children) {
               var ice = jsonDecode(jsonEncode(iceData.value))['ice'];
-              if (idCurrent == slipStringId?.first && ice != null && !duplicate.contains(ice)) {
+              if (_idCurrent == slipStringId?.first && ice != null && !duplicate.contains(ice)) {
                 await signaling.handleSignalingCommand(SignalingCommand.ICE, ice,
                     sessionId: idRoom, to: room.idUsers, iceOfId: iceOfId);
               }
@@ -164,6 +173,9 @@ class CallGroupBloc extends Cubit<CallGroupState> {
       _database.child('rooms/$idRoom').once().then((event) {
         if (jsonDecode(jsonEncode(event.snapshot.value)) != null) {
           room = Room.fromJson(jsonDecode(jsonEncode(event.snapshot.value)));
+          _checkConnectWithOtherUser(room.idUsers);
+          getOfferOrAnswer(room.id);
+          listenBye(room.id);
           emit(CallGroupState.room(room));
         }
       }, onError: (e) {
@@ -173,6 +185,53 @@ class CallGroupBloc extends Cubit<CallGroupState> {
     } catch (e) {
       emit(CallGroupState.error(e.toString()));
     }
+  }
+
+  Future<void> sendByeUser(String idRoom) async {
+    try {
+      await _database.child('rooms/$idRoom/bye').set({'bye': true});
+    } catch (e) {
+      emit(CallGroupState.error(e.toString()));
+    }
+  }
+
+  Future<void> listenBye(String idRoom) async {
+    try {
+      _database.child('rooms/$idRoom/bye').onValue.listen((event) {
+        if (jsonDecode(jsonEncode(event.snapshot.value)) != null) {
+          emit(const CallGroupState.closeRoom());
+        }
+      }, onError: (e) {
+        print(e);
+        emit(CallGroupState.error(e.toString()));
+      });
+    } catch (e) {
+      emit(CallGroupState.error(e.toString()));
+    }
+  }
+
+  _checkConnectWithOtherUser(List<String> userIds) {
+    for (var id in userIds) {
+      _connectSuccessWithUsers[id] = false;
+    }
+    _createOfferOtherUser();
+  }
+
+  _createOfferOtherUser() async {
+    _checkOffer.debounceTime(const Duration(seconds: 4)).listen((value) {
+      var inviteUser = <String>[];
+      _connectSuccessWithUsers.forEach((key, value) {
+        if (!value && key != _idCurrent) {
+          inviteUser.add(key);
+        }
+      });
+      print('[invite more]: invite ${inviteUser.length.toString()}');
+      if (inviteUser.isNotEmpty) {
+        print(inviteUser);
+        signaling.inviteOtherUser(inviteUser, room.id);
+        emit(CallGroupState.inviteOtherConnect(inviteUser));
+      }
+    });
   }
 
   @override

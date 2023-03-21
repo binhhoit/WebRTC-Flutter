@@ -11,4 +11,5 @@ class CallGroupState with _$CallGroupState {
   const factory CallGroupState.error(String message) = CallGroupError;
   const factory CallGroupState.room(Room room) = CallGroupRoom;
   const factory CallGroupState.closeRoom() = CloseRoom;
+  const factory CallGroupState.inviteOtherConnect(List<String> userIds) = InviteOtherConnect;
 }

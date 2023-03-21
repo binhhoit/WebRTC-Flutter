@@ -58,6 +58,7 @@ class Signaling {
   Function(SignalingState state)? onSignalingStateChange;
   Function(WebRTCSessionState state)? onWebRTCSessionState;
   Function(Session session, CallState state)? onCallStateChange;
+  Function(String userId, RTCPeerConnectionState state)? onConnectionState;
   Function(MediaStream stream)? onLocalStream;
   Function(Session session, MediaStream stream, String userId)? onAddRemoteStream;
   Function(Session session, MediaStream stream, String userId)? onRemoveRemoteStream;
@@ -137,6 +138,14 @@ class Signaling {
     _createOffer(session, media, to, from, nameCaller, avatar);
     onCallStateChange?.call(session, CallState.CallStateNew);
     onCallStateChange?.call(session, CallState.CallStateInvite);
+  }
+
+  // TODO: for case other use pair connection.
+  void inviteOtherUser(List<String> to, String sessionId) async {
+    var session = _sessions[sessionId];
+    if (session != null) {
+      _createOffer(session, 'video', to, _selfId, null, null);
+    }
   }
 
   void bye(String sessionId, List<String> to, String from) {
@@ -449,7 +458,8 @@ class Signaling {
           print('[pc ice connect state] ${state.name}');
         };
         pc.onConnectionState = (state) {
-          Fluttertoast.showToast(msg: '[pc connect state] ${state.name.toString()}');
+          onConnectionState?.call(userId, state);
+          Fluttertoast.showToast(msg: '[pc connect state: $userId] ${state.name.toString()}');
           print('[pc connect state] ${state.name.toString()}');
         };
 
@@ -460,6 +470,7 @@ class Signaling {
           });
         };
         pcs[userId] = pc;
+        newSession.remoteCandidates[userId] = [];
       }
     }
     newSession.pcs = pcs;
@@ -468,18 +479,23 @@ class Signaling {
 
   Future<void> _createOffer(
       Session session, String media, List<String> to, String from, nameCaller, avatar) async {
-    session.pcs?.forEach((userId, pc) async {
+    for (var userId in to) {
       if (userId != from) {
         try {
-          RTCSessionDescription s = await pc.createOffer(media == 'data' ? _dcConstraints : {});
-          await pc.setLocalDescription(_fixSdp(s));
-          _send(SignalingCommand.OFFER.name, s.sdp, userId, from, session.sid,
-              nameCaller: nameCaller, avatar: avatar);
+          var pc = session.pcs?[userId];
+          if (pc != null) {
+            RTCSessionDescription s = await pc.createOffer(media == 'data' ? _dcConstraints : {});
+            await pc.setLocalDescription(_fixSdp(s));
+            _send(SignalingCommand.OFFER.name, s.sdp, userId, from, session.sid,
+                nameCaller: nameCaller, avatar: avatar);
+          } else {
+            throw NullThrownError();
+          }
         } catch (e) {
           print(e.toString());
         }
       }
-    });
+    }
   }
 
   RTCSessionDescription _fixSdp(RTCSessionDescription s) {
