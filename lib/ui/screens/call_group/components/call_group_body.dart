@@ -94,7 +94,7 @@ class _BodyCallBody extends State<BodyCallBody> with SingleTickerProviderStateMi
       switch (state) {
         case SignalingState.ConnectionClosed:
           if (mounted) {
-            Navigator.pop(context);
+            // Navigator.pop(context);
           }
           print(state);
           break;
@@ -181,9 +181,11 @@ class _BodyCallBody extends State<BodyCallBody> with SingleTickerProviderStateMi
           _showInviteDialog();
           break;
         case CallState.CallStateConnected:
-          setState(() {
-            _inCalling = true;
-          });
+          if (!_inCalling) {
+            setState(() {
+              _inCalling = true;
+            });
+          }
 
           break;
         case CallState.CallStateRinging:
@@ -201,9 +203,11 @@ class _BodyCallBody extends State<BodyCallBody> with SingleTickerProviderStateMi
 
     _signaling?.onAddRemoteStream = ((_, stream, userId) {
       print('[Stream Data]:' + '${userId.toString()} - ' + stream.id.toString());
-      _remoteRenderers[userId]?.srcObject = stream;
-
-      if (mounted) setState(() {});
+      if (mounted) {
+        setState(() {
+          _remoteRenderers[userId]?.srcObject = stream;
+        });
+      }
     });
 
     _signaling?.onRemoveRemoteStream = ((_, stream, userId) {
@@ -211,9 +215,11 @@ class _BodyCallBody extends State<BodyCallBody> with SingleTickerProviderStateMi
     });
 
     _signaling?.onConnectionState = (userId, state) {
-      setState(() {
-        _statePeerConnect[userId] = state;
-      });
+      if (mounted) {
+        setState(() {
+          _statePeerConnect[userId] = state;
+        });
+      }
     };
   }
 

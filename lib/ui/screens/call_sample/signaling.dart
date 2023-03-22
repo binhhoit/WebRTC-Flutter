@@ -32,12 +32,12 @@ enum VideoSource {
 }
 
 class Session {
-  Session({required this.sid, required this.pid, required this.to});
-  String pid;
+  Session({required this.sid, required this.to});
   String sid;
   List<String>? to;
   Map<String, RTCPeerConnection>? pcs;
   Map<String, List<RTCIceCandidate>> remoteCandidates = {};
+  Map<String, bool> isConnectSuccess = {};
 }
 
 class Signaling {
@@ -130,10 +130,9 @@ class Signaling {
 
   void invite(
       String media, bool useScreen, List<String> to, String from, nameCaller, avatar) async {
-    var peerId = randomNumeric(12);
     var sessionId = /*'$_selfId-$peerId';*/ 'dQw6jgPNeshh8AEKsOr9yPpTOpp1-426658330133';
     Session session = await _createSession(null,
-        peerId: peerId, sessionId: sessionId, media: media, screenSharing: useScreen, userIds: to);
+        sessionId: sessionId, media: media, screenSharing: useScreen, userIds: to);
     _sessions[sessionId] = session;
     _createOffer(session, media, to, from, nameCaller, avatar);
     onCallStateChange?.call(session, CallState.CallStateNew);
@@ -242,52 +241,86 @@ class Signaling {
 
   Future<void> handleOffer(String value, String sessionId, {to, offerOfId}) async {
     print("[SDP] handle offer: $value");
-    offer = value;
-    var session = _sessions[sessionId];
-    var newSession = await _createSession(session,
-        peerId: randomNumeric(12),
-        sessionId: sessionId,
-        media: 'video',
-        screenSharing: false,
-        userIds: to);
-    _sessions[sessionId] = newSession;
-    await newSession.pcs?[offerOfId]
-        ?.setRemoteDescription(RTCSessionDescription(value.mungeCodecs(), Type.OFFER.name));
-
-    if (newSession.remoteCandidates.isNotEmpty) {
-      var candidates = newSession.remoteCandidates[offerOfId];
-      candidates?.forEach((candidate) async {
-        await newSession.pcs?[offerOfId]?.addCandidate(candidate);
-      });
-      newSession.remoteCandidates.clear();
+    try {
+      offer = value;
+      var session = _sessions[sessionId];
+      var newSession = await _createSession(session,
+          sessionId: sessionId, media: 'video', screenSharing: false, userIds: to);
+      _sessions[sessionId] = newSession;
+      if (newSession.isConnectSuccess[offerOfId] == null) {
+        await newSession.pcs![offerOfId]!
+            .setRemoteDescription(RTCSessionDescription(value.mungeCodecs(), Type.OFFER.name));
+        if (newSession.pcs?[offerOfId] == null) {
+          print('[error handleOffer]: $offerOfId pc null');
+        }
+        setIceDelay(newSession, offerOfId);
+        onCallStateChange?.call(newSession, CallState.CallStateNew);
+        onCallStateChange?.call(newSession, CallState.CallStateRinging);
+      }
+    } catch (e) {
+      print('[error handleOffer]: $e');
     }
-    onCallStateChange?.call(newSession, CallState.CallStateNew);
-    onCallStateChange?.call(newSession, CallState.CallStateRinging);
   }
 
   void handleAnswer(String sdp, String sessionId, {answerOfId}) {
     print("[SDP] handle answer: $sdp");
     //Note Get Map Data [sessonID sdp]
-    var session = _sessions[sessionId];
-    session?.pcs?[answerOfId]?.setRemoteDescription(
-        RTCSessionDescription(sdp.mungeCodecs(), Type.ANSWER.name.toLowerCase()));
-    onCallStateChange?.call(session!, CallState.CallStateConnected);
+    try {
+      var session = _sessions[sessionId];
+      if (session?.isConnectSuccess[answerOfId] == null) {
+        session?.pcs?[answerOfId]?.setRemoteDescription(
+            RTCSessionDescription(sdp.mungeCodecs(), Type.ANSWER.name.toLowerCase()));
+        if (session?.pcs?[answerOfId] == null) {
+          print('[error handleAnswer]: $answerOfId pc null');
+        }
+        setIceDelay(session, answerOfId);
+        onCallStateChange?.call(session!, CallState.CallStateConnected);
+      }
+    } catch (e) {
+      print('[error handleAnswer]: $e');
+    }
+  }
+
+  Future<void> setIceDelay(Session? session, idOfIce) async {
+    if (session?.remoteCandidates[idOfIce]?.isNotEmpty == true) {
+      print("[setIceDelay]: $idOfIce");
+      var candidates = session?.remoteCandidates[idOfIce];
+      try {
+        candidates?.forEach((candidate) async {
+          await session?.pcs?[idOfIce]?.addCandidate(candidate);
+        });
+      } catch (e) {
+        print(e);
+        print("[error setIceDelay]: $e");
+      }
+      session?.remoteCandidates[idOfIce]?.clear();
+    }
   }
 
   Future<void> handleIce(String iceMessage, String sessionId, iceOfId) async {
     try {
       var session = _sessions[sessionId];
-      var iceArray = iceMessage.split(ICE_SEPARATOR);
-      RTCIceCandidate candidate = RTCIceCandidate(iceArray[2], iceArray[0], int.parse(iceArray[1]));
-      if (session != null) {
-        if (session.pcs?[iceOfId] != null) {
-          await session.pcs?[iceOfId]?.addCandidate(candidate);
+      if (session?.isConnectSuccess[iceOfId] == null) {
+        var iceArray = iceMessage.split(ICE_SEPARATOR);
+        RTCIceCandidate candidate =
+            RTCIceCandidate(iceArray[2], iceArray[0], int.parse(iceArray[1]));
+        if (session != null) {
+          var pc = session.pcs?[iceOfId];
+          var des = await pc?.getRemoteDescription();
+          if (pc != null && des != null) {
+            await session.pcs?[iceOfId]?.addCandidate(candidate);
+            print("[handleIce]: $iceOfId");
+          } else {
+            print("[save handleIce]: $iceOfId pc: ${pc.toString()} des: ${des.toString()}");
+            if (session.remoteCandidates[iceOfId] == null) {
+              session.remoteCandidates[iceOfId] = <RTCIceCandidate>[];
+            }
+            session.remoteCandidates[iceOfId]?.add(candidate);
+          }
         } else {
-          (session.remoteCandidates[iceOfId] as List<RTCIceCandidate>).add(candidate);
+          var session = _sessions[sessionId] = Session(sid: sessionId, to: []);
+          session.remoteCandidates[iceOfId]?.add(candidate);
         }
-      } else {
-        var session = _sessions[sessionId] = Session(pid: _selfId, sid: sessionId, to: []);
-        (session.remoteCandidates[iceOfId] as List<RTCIceCandidate>).add(candidate);
       }
     } catch (e) {
       print("error handleIce $e");
@@ -394,13 +427,12 @@ class Signaling {
 
   Future<Session> _createSession(
     Session? session, {
-    required String peerId,
     required String sessionId,
     required String media,
     required bool screenSharing,
     required List<String> userIds,
   }) async {
-    var newSession = session ?? Session(sid: sessionId, pid: peerId, to: userIds);
+    var newSession = session ?? Session(sid: sessionId, to: userIds);
     var pcs = <String, RTCPeerConnection>{};
     if (media != 'data') {
       _localStream = await createStream(media, screenSharing, context: _context);
@@ -461,6 +493,9 @@ class Signaling {
           onConnectionState?.call(userId, state);
           Fluttertoast.showToast(msg: '[pc connect state: $userId] ${state.name.toString()}');
           print('[pc connect state] ${state.name.toString()}');
+          if (state == RTCIceConnectionState.RTCIceConnectionStateConnected) {
+            newSession.isConnectSuccess[userId] = true;
+          }
         };
 
         pc.onRemoveStream = (stream) {
@@ -483,7 +518,7 @@ class Signaling {
       if (userId != from) {
         try {
           var pc = session.pcs?[userId];
-          if (pc != null) {
+          if (pc != null && session.isConnectSuccess[userId] == null) {
             RTCSessionDescription s = await pc.createOffer(media == 'data' ? _dcConstraints : {});
             await pc.setLocalDescription(_fixSdp(s));
             _send(SignalingCommand.OFFER.name, s.sdp, userId, from, session.sid,
@@ -506,11 +541,13 @@ class Signaling {
 
   Future<void> _createAnswer(Session session, String media, {answerForId}) async {
     try {
-      var pc = session.pcs?[answerForId];
-      if (pc != null) {
-        RTCSessionDescription s = await pc.createAnswer(media == 'data' ? _dcConstraints : {});
-        await pc.setLocalDescription(_fixSdp(s));
-        _send(SignalingCommand.ANSWER.name, s.sdp, answerForId, '', session.sid);
+      if (session.isConnectSuccess[answerForId] == null) {
+        var pc = session.pcs?[answerForId];
+        if (pc != null) {
+          RTCSessionDescription s = await pc.createAnswer(media == 'data' ? _dcConstraints : {});
+          await pc.setLocalDescription(_fixSdp(s));
+          _send(SignalingCommand.ANSWER.name, s.sdp, answerForId, '', session.sid);
+        }
       }
     } catch (e) {
       print(e.toString());
