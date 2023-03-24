@@ -23,9 +23,7 @@ class CallGroupBloc extends Cubit<CallGroupState> {
   final BehaviorSubject<bool> _checkOffer = BehaviorSubject();
 
   var duplicate = <String>[];
-  CallGroupBloc(this.buildConfig) : super(const CallGroupState.init()) {
-    getRooms('dQw6jgPNeshh8AEKsOr9yPpTOpp1-426658330133');
-  }
+  CallGroupBloc(this.buildConfig) : super(const CallGroupState.init());
 
   final databaseReference = FirebaseFirestore.instance;
 
@@ -35,7 +33,6 @@ class CallGroupBloc extends Cubit<CallGroupState> {
     this.signaling = signaling;
   }
 
-  //TODO : debug thêm máy thứ 3 sent data như thế nào
   Future<void> sentData(String sessionId, String to, String data) async {
     duplicate.add(data);
     if (data.toLowerCase().startsWith(SignalingCommand.OFFER.name.toLowerCase())) {
@@ -130,12 +127,13 @@ class CallGroupBloc extends Cubit<CallGroupState> {
                 answer != null &&
                 !duplicate.contains('answer ${offerOrAnswer.key}') &&
                 !duplicate.contains(answer)) {
-              print('answer blabla');
               duplicate.add('answer ${offerOrAnswer.key}');
               await signaling.handleSignalingCommand(SignalingCommand.ANSWER, answer,
                   sessionId: idRoom, to: room.idUsers, answerOfId: idUserHandle);
               await Future.delayed(const Duration(seconds: 1));
               duplicate.add(answer);
+            } else {
+              duplicate.clear();
             }
           }
         }
@@ -153,7 +151,7 @@ class CallGroupBloc extends Cubit<CallGroupState> {
     try {
       _database.child('rooms/$idRoom/ice').onValue.listen((event) async {
         for (var child in event.snapshot.children) {
-          if (child.key?.contains(_idCurrent) == true && !duplicate.contains('ice ${child.key}')) {
+          if (child.key?.contains(_idCurrent) == true) {
             var slipStringId = child.key?.split('-');
             var iceOfId = "";
             slipStringId?.forEach((element) {

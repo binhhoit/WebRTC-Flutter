@@ -19,13 +19,16 @@ class BodyCallBody extends StatefulWidget {
   final bool isRequestCall;
   final String? session;
   final String? offer;
+  final String? roomId;
 
   const BodyCallBody(
-      {required this.host,
+      {super.key,
+      required this.host,
       required this.to,
       required this.session,
       required this.offer,
-      required this.isRequestCall});
+      required this.isRequestCall,
+      this.roomId});
 
   @override
   _BodyCallBody createState() => _BodyCallBody();
@@ -52,6 +55,9 @@ class _BodyCallBody extends State<BodyCallBody> with SingleTickerProviderStateMi
   initState() {
     super.initState();
     _bloc = context.read<CallGroupBloc>();
+    if (widget.roomId != null) {
+      _bloc.getRooms(widget.roomId!);
+    }
     if (widget.to.isNotEmpty) {
       _createRemoteRenderers();
     }
@@ -220,6 +226,9 @@ class _BodyCallBody extends State<BodyCallBody> with SingleTickerProviderStateMi
           _statePeerConnect[userId] = state;
         });
       }
+      if (state == RTCPeerConnectionState.RTCPeerConnectionStateFailed) {
+        //_bloc.deleteOfferOrAnswerFailed(userId);
+      }
     };
   }
 
@@ -381,7 +390,11 @@ class _BodyCallBody extends State<BodyCallBody> with SingleTickerProviderStateMi
   }
 
   List<Widget> _videoRenderCall(BuildContext context, width, height) {
-    List<Widget> viewRender = [];
+    List<Widget> viewRender = [
+      Container(
+        child: Text('empty'),
+      )
+    ];
     for (var user in widget.to) {
       if (user.id != PreferenceManager.instance.currentUser.id) {
         var container = Container(

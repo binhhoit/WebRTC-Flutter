@@ -117,6 +117,7 @@ class _BodyHome extends State<BodyHome> {
                         session: null,
                         offer: null,
                         isRequestCall: false,
+                        roomId: item.id,
                       )));
         },
         trailing: const Icon(Icons.arrow_right),

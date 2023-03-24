@@ -28,25 +28,16 @@ class _HomeScreen extends State<HomeScreen> {
   List<User> _listUser() {
     var users = <User>[];
     users.add(User(
-        id: "qBQ63lA5neZPpqP0QLeMKEdK6N82",
+        id: "dQw6jgPNeshh8AEKsOr9yPpTOpp1",
         avatar: "https://hoala.vn/upload/img/images/hoa_thanh_luong_11.jpg",
         email: "email",
-        name: "Omar Levin"));
-    users.add(User(
-        id: "IRbuJeYik4SSasKRWLQ54ACzU3h1",
-        avatar: "https://hoala.vn/upload/img/images/hoa_thanh_luong_11.jpg",
-        email: "email",
-        name: "User 1"));
+        name: "Emerson Herwitz"));
     users.add(User(
         id: "Hbx4MrsV7haempcr7JRVbeQh1lD3",
         avatar: "https://hoala.vn/upload/img/images/hoa_thanh_luong_11.jpg",
         email: "email",
         name: "Alexandrine Xander"));
-    users.add(User(
-        id: "LG2LzJMv2NaE43lb1vlsfJgYA1s1",
-        avatar: "https://hoala.vn/upload/img/images/hoa_thanh_luong_11.jpg",
-        email: "email",
-        name: "Stephen"));
+
     users.add(currentUser);
     return users;
   }

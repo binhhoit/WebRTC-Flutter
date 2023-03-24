@@ -4,10 +4,8 @@ import 'dart:convert';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
-import 'package:fluttertoast/fluttertoast.dart';
 
 import '../../../utils/device_info.dart' if (dart.library.js) '../utils/device_info_web.dart';
-import '../../../utils/screen_select_dialog.dart';
 import '../../../utils/websocket.dart' if (dart.library.js) '../utils/websocket_web.dart';
 import 'Constants.dart';
 import 'random_string.dart';
@@ -128,11 +126,9 @@ class Signaling {
     }
   }
 
-  void invite(
-      String media, bool useScreen, List<String> to, String from, nameCaller, avatar) async {
+  void invite(String media, List<String> to, String from, nameCaller, avatar) async {
     var sessionId = /*'$_selfId-$peerId';*/ 'dQw6jgPNeshh8AEKsOr9yPpTOpp1-426658330133';
-    Session session = await _createSession(null,
-        sessionId: sessionId, media: media, screenSharing: useScreen, userIds: to);
+    Session session = await _createSession(null, sessionId: sessionId, media: media, userIds: to);
     _sessions[sessionId] = session;
     _createOffer(session, media, to, from, nameCaller, avatar);
     onCallStateChange?.call(session, CallState.CallStateNew);
@@ -244,8 +240,8 @@ class Signaling {
     try {
       offer = value;
       var session = _sessions[sessionId];
-      var newSession = await _createSession(session,
-          sessionId: sessionId, media: 'video', screenSharing: false, userIds: to);
+      var newSession =
+          await _createSession(session, sessionId: sessionId, media: 'video', userIds: to);
       _sessions[sessionId] = newSession;
       if (newSession.isConnectSuccess[offerOfId] == null) {
         await newSession.pcs![offerOfId]!
@@ -341,29 +337,6 @@ class Signaling {
     _socket = SimpleWebSocket(url);
 
     print('connect to $url');
-
-    /*if (_turnCredential == null) {
-      try {
-        _turnCredential = await getTurnCredential(_host, _port);
-        */ /*{
-            "username": "1584195784:mbzrxpgjys",
-            "password": "isyl6FF6nqMTB9/ig5MrMRUXqZg",
-            "ttl": 86400,
-            "uris": ["turn:127.0.0.1:19302?transport=udp"]
-          }
-        */ /*
-        _iceServers = {
-          'iceServers': [
-            {
-              'urls': _turnCredential['uris'][0],
-              'username': _turnCredential['username'],
-              'credential': _turnCredential['password']
-            },
-          ]
-        };
-      } catch (e) {}
-    }
-*/
     _socket?.onOpen = () {
       print('onOpen');
       onSignalingStateChange?.call(SignalingState.ConnectionOpen);
@@ -384,42 +357,21 @@ class Signaling {
     await _socket?.connect();
   }
 
-  Future<MediaStream> createStream(String media, bool userScreen, {BuildContext? context}) async {
+  Future<MediaStream> createStream(String media, {BuildContext? context}) async {
     final Map<String, dynamic> mediaConstraints = {
-      'audio': userScreen ? false : true,
-      'video': userScreen
-          ? true
-          : {
-              'mandatory': {
-                'minWidth': '640', // Provide your own width, height and frame rate here
-                'minHeight': '480',
-                'minFrameRate': '30',
-              },
-              'facingMode': 'user',
-              'optional': [],
-            }
+      'audio': true,
+      'video': {
+        'mandatory': {
+          'minWidth': '640', // Provide your own width, height and frame rate here
+          'minHeight': '480',
+          'minFrameRate': '30',
+        },
+        'facingMode': 'user',
+        'optional': [],
+      }
     };
     late MediaStream stream;
-    if (userScreen) {
-      if (WebRTC.platformIsDesktop) {
-        final source = await showDialog<DesktopCapturerSource>(
-          context: context!,
-          builder: (context) => ScreenSelectDialog(),
-        );
-        stream = await navigator.mediaDevices.getDisplayMedia(<String, dynamic>{
-          'video': source == null
-              ? true
-              : {
-                  'deviceId': {'exact': source.id},
-                  'mandatory': {'frameRate': 30.0}
-                }
-        });
-      } else {
-        stream = await navigator.mediaDevices.getDisplayMedia(mediaConstraints);
-      }
-    } else {
-      stream = await navigator.mediaDevices.getUserMedia(mediaConstraints);
-    }
+    stream = await navigator.mediaDevices.getUserMedia(mediaConstraints);
 
     onLocalStream?.call(stream);
     return stream;
@@ -429,13 +381,12 @@ class Signaling {
     Session? session, {
     required String sessionId,
     required String media,
-    required bool screenSharing,
     required List<String> userIds,
   }) async {
     var newSession = session ?? Session(sid: sessionId, to: userIds);
     var pcs = <String, RTCPeerConnection>{};
     if (media != 'data') {
-      _localStream = await createStream(media, screenSharing, context: _context);
+      _localStream = await createStream(media, context: _context);
     }
     for (var userId in userIds) {
       if (userId != _selfId) {
@@ -491,10 +442,12 @@ class Signaling {
         };
         pc.onConnectionState = (state) {
           onConnectionState?.call(userId, state);
-          Fluttertoast.showToast(msg: '[pc connect state: $userId] ${state.name.toString()}');
           print('[pc connect state] ${state.name.toString()}');
-          if (state == RTCIceConnectionState.RTCIceConnectionStateConnected) {
+          if (state == RTCPeerConnectionState.RTCPeerConnectionStateConnected) {
             newSession.isConnectSuccess[userId] = true;
+          } else if (state == RTCPeerConnectionState.RTCPeerConnectionStateFailed) {
+            print('[reconnect]: ${userId.toString()}');
+            inviteOtherUser([userId], sessionId);
           }
         };
 
@@ -625,7 +578,7 @@ class Signaling {
       accept(sessionId);
       print("--------accept--------");
     } else {
-      invite('video', false, to, _selfId, nameCaller, avatar);
+      invite('video', to, _selfId, nameCaller, avatar);
       print("--------invite--------");
     }
   }

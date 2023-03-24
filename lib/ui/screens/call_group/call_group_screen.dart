@@ -13,13 +13,16 @@ class CallGroupScreen extends StatefulWidget {
   final bool isRequestCall;
   final String? session;
   final String? offer;
+  final String? roomId;
 
   const CallGroupScreen(
-      {required this.host,
+      {super.key,
+      required this.host,
       required this.to,
       required this.session,
       required this.offer,
-      required this.isRequestCall});
+      required this.isRequestCall,
+      this.roomId});
 
   @override
   _CallGroupScreenState createState() => _CallGroupScreenState();
@@ -40,7 +43,8 @@ class _CallGroupScreenState extends State<CallGroupScreen> {
           to: widget.to,
           session: widget.session,
           offer: widget.offer,
-          isRequestCall: widget.isRequestCall),
+          isRequestCall: widget.isRequestCall,
+          roomId: widget.roomId),
     );
   }
 }
