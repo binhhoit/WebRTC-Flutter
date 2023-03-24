@@ -60,7 +60,7 @@ class HomeBloc extends Cubit<HomeState> {
           final room = Room.fromJson(jsonDecode(jsonEncode(doc.value)));
           rooms.add(room);
         }
-        emit(HomeState.rooms(rooms));
+        if (!isClosed) emit(HomeState.rooms(rooms));
       }, onError: (e) {
         print(e);
         emit(HomeState.error(e.toString()));

@@ -321,11 +321,11 @@ class _BodyCallBody extends State<BodyCallBody> with SingleTickerProviderStateMi
 
   _waitingCall() {
     var callUser = widget.to;
-    var name = "";
+    var name = callUser.first?.name ?? '';
     var avatarWidget = <Widget>[];
 
     for (var element in callUser) {
-      name = "$name - ${element.name}";
+      if (element != name) name = "$name - ${element.name}";
       avatarWidget.add(SizedBox(
         height: 50,
         width: 50,
@@ -355,6 +355,7 @@ class _BodyCallBody extends State<BodyCallBody> with SingleTickerProviderStateMi
               children: [
                 Text(
                   name.toUpperCase(),
+                  textAlign: TextAlign.center,
                   style: const TextStyle(
                       color: Colors.white, fontWeight: FontWeight.bold, fontSize: 25),
                 ),
