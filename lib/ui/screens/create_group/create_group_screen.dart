@@ -109,7 +109,7 @@ class _CreateGroupScreen extends State<CreateGroupScreen> {
                                   value: _users[index].isSelected,
                                   onChanged: (bool? value) {
                                     setState(() {
-                                      _users[index].isSelected = value!;
+                                      _users[index] = _users[index].copyWith(isSelected: value!);
                                     });
                                   },
                                 );

@@ -9,14 +9,12 @@ class User extends HiveObject with _$User {
   User._();
 
   @HiveType(typeId: 1, adapterName: 'UserAdapter')
-  factory User({
-    @HiveField(0) required String id,
-    @HiveField(1) required String avatar,
-    @HiveField(2) required String email,
-    @HiveField(3) required String name,
-  }) = _User;
+  factory User(
+      {@HiveField(0) required String id,
+      @HiveField(1) required String avatar,
+      @HiveField(2) required String email,
+      @HiveField(3) required String name,
+      @Default(false) @HiveField(4) bool isSelected}) = _User;
 
   factory User.fromJson(Map<String, dynamic> json) => _$UserFromJson(json);
-
-  bool isSelected = false;
 }
