@@ -17,4 +17,6 @@ class User extends HiveObject with _$User {
   }) = _User;
 
   factory User.fromJson(Map<String, dynamic> json) => _$UserFromJson(json);
+
+  bool isSelected = false;
 }

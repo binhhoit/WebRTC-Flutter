@@ -3,7 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:webrtc_flutter/domain/entities/user/user.dart';
 import 'package:webrtc_flutter/injection.dart';
 import 'package:webrtc_flutter/ui/route_item.dart';
-import 'package:webrtc_flutter/ui/screens/call_group/call_group_screen.dart';
+import 'package:webrtc_flutter/ui/screens/create_group/create_group_screen.dart';
 import 'package:webrtc_flutter/ui/screens/home/bloc/home_bloc.dart';
 import 'package:webrtc_flutter/ui/screens/home/components/body.dart';
 import 'package:webrtc_flutter/ui/screens/home/components/profile_drawer.dart';
@@ -25,37 +25,13 @@ class _HomeScreen extends State<HomeScreen> {
     super.initState();
   }
 
-  List<User> _listUser() {
-    var users = <User>[];
-    users.add(User(
-        id: "dQw6jgPNeshh8AEKsOr9yPpTOpp1",
-        avatar: "https://hoala.vn/upload/img/images/hoa_thanh_luong_11.jpg",
-        email: "email",
-        name: "Emerson Herwitz"));
-    users.add(User(
-        id: "Hbx4MrsV7haempcr7JRVbeQh1lD3",
-        avatar: "https://hoala.vn/upload/img/images/hoa_thanh_luong_11.jpg",
-        email: "email",
-        name: "Alexandrine Xander"));
-
-    users.add(currentUser);
-    return users;
-  }
-
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
         home: Scaffold(
             appBar: topBar(() {
               Navigator.push(
-                  context,
-                  MaterialPageRoute<void>(
-                      builder: (_) => CallGroupScreen(
-                          host: homeBloc.getBaseUrlServer(),
-                          to: _listUser(),
-                          session: null,
-                          offer: null,
-                          isRequestCall: true)));
+                  context, MaterialPageRoute<void>(builder: (_) => const CreateGroupScreen()));
             }),
             drawer: profileDrawer(context, currentUser),
             body: BlocProvider<HomeBloc>(
