@@ -160,19 +160,20 @@ class CallGroupBloc extends Cubit<CallGroupState> {
               }
             });
 
-            if (_idCurrent != slipStringId?.last) {
+            if (_idCurrent == slipStringId?.first &&
+                /*!duplicate.contains('ice ${child.key}') &&*/
+                child.children.length >= 6) {
               for (var iceData in child.children) {
-                await Future.delayed(const Duration(seconds: 1));
                 var ice = jsonDecode(jsonEncode(iceData.value))['ice'];
                 if (_idCurrent == slipStringId?.first && ice != null) {
                   await signaling.handleSignalingCommand(SignalingCommand.ICE, ice,
-                      sessionId: idRoom, to: room.idUsers, iceOfId: iceOfId);
+                      sessionId: idRoom, iceOfId: iceOfId);
                 }
               }
+              await Future.delayed(const Duration(seconds: 1));
+              duplicate.add('ice ${child.key}');
             }
           }
-          await Future.delayed(const Duration(seconds: 1));
-          duplicate.add('ice ${child.key}');
         }
       }, onError: (e) {
         print(e);
