@@ -10,11 +10,9 @@ import 'package:webrtc_flutter/ui/screens/call_group/bloc/call_group_bloc.dart';
 import 'package:webrtc_flutter/ui/screens/call_group/bloc/call_group_state.dart';
 import 'package:webrtc_flutter/ui/screens/call_sample/Constants.dart';
 import 'package:webrtc_flutter/ui/screens/call_sample/signaling.dart';
-import 'package:webrtc_flutter/utils/screen_select_dialog.dart';
 
 class BodyCallBody extends StatefulWidget {
   static String tag = 'call_group';
-  final String host;
   final to;
   final bool isRequestCall;
   final String? session;
@@ -23,7 +21,6 @@ class BodyCallBody extends StatefulWidget {
 
   const BodyCallBody(
       {super.key,
-      required this.host,
       required this.to,
       required this.session,
       required this.offer,
@@ -41,7 +38,6 @@ class _BodyCallBody extends State<BodyCallBody> with SingleTickerProviderStateMi
   final Map<String, RTCPeerConnectionState> _statePeerConnect = {};
   bool _inCalling = false;
   Session? _session;
-  DesktopCapturerSource? selected_source_;
   late AnimationController _animationController;
   late CallGroupBloc _bloc;
 
@@ -94,24 +90,8 @@ class _BodyCallBody extends State<BodyCallBody> with SingleTickerProviderStateMi
   }
 
   void _connect(BuildContext context) async {
-    _signaling ??= Signaling(widget.host, context)..connect();
+    _signaling ??= Signaling()..connect();
     _bloc.setSignaling(_signaling!);
-    _signaling?.onSignalingStateChange = (SignalingState state) {
-      switch (state) {
-        case SignalingState.ConnectionClosed:
-          if (mounted) {
-            // Navigator.pop(context);
-          }
-          print(state);
-          break;
-        case SignalingState.ConnectionError:
-          print(state);
-          break;
-        case SignalingState.ConnectionOpen:
-          print(state);
-          break;
-      }
-    };
 
     _signaling?.onWebRTCSessionState = (WebRTCSessionState state) async {
       switch (state) {
@@ -128,9 +108,8 @@ class _BodyCallBody extends State<BodyCallBody> with SingleTickerProviderStateMi
           if (widget.isRequestCall) {
             List<String> ids =
                 (widget.to as List<dynamic>).map((e) => e.id).cast<String>().toList();
-            var userCall = PreferenceManager.instance.currentUser;
-            _signaling?.onSessionScreenReady(ids,
-                nameCaller: userCall.name, avatar: userCall.avatar);
+            print("--------invite--------");
+            _signaling?.invite(ids);
           } else {
             /* await _signaling?.handleSignalingCommand(SignalingCommand.OFFER, widget.offer ?? '',
                 sessionId: widget.session);
@@ -229,6 +208,10 @@ class _BodyCallBody extends State<BodyCallBody> with SingleTickerProviderStateMi
       if (state == RTCPeerConnectionState.RTCPeerConnectionStateFailed) {
         //_bloc.deleteOfferOrAnswerFailed(userId);
       }
+
+      if (state == RTCPeerConnectionState.RTCPeerConnectionStateConnected && _timer == null) {
+        _startTimer();
+      }
     };
   }
 
@@ -260,7 +243,7 @@ class _BodyCallBody extends State<BodyCallBody> with SingleTickerProviderStateMi
         fontSize: 16);
   }
 
-  _accept() {
+  /*_accept() {
     if (_session != null) {
       _signaling?.accept(_session!.sid);
     }
@@ -270,7 +253,7 @@ class _BodyCallBody extends State<BodyCallBody> with SingleTickerProviderStateMi
     if (_session != null) {
       _signaling?.reject(_session!.sid);
     }
-  }
+  }*/
 
   _hangUp() {
     if (_session != null) {
@@ -283,38 +266,6 @@ class _BodyCallBody extends State<BodyCallBody> with SingleTickerProviderStateMi
     _signaling?.switchCamera();
   }
 
-  Future<void> selectScreenSourceDialog(BuildContext context) async {
-    MediaStream? screenStream;
-    if (WebRTC.platformIsDesktop) {
-      final source = await showDialog<DesktopCapturerSource>(
-        context: context,
-        builder: (context) => ScreenSelectDialog(),
-      );
-      if (source != null) {
-        try {
-          var stream = await navigator.mediaDevices.getDisplayMedia(<String, dynamic>{
-            'video': {
-              'deviceId': {'exact': source.id},
-              'mandatory': {'frameRate': 30.0}
-            }
-          });
-          stream.getVideoTracks()[0].onEnded = () {
-            print('By adding a listener on onEnded you can: 1) catch stop video sharing on Web');
-          };
-          screenStream = stream;
-        } catch (e) {
-          print(e);
-        }
-      }
-    } else if (WebRTC.platformIsWeb) {
-      screenStream = await navigator.mediaDevices.getDisplayMedia(<String, dynamic>{
-        'audio': false,
-        'video': true,
-      });
-    }
-    if (screenStream != null) _signaling?.switchToScreenSharing(screenStream);
-  }
-
   _muteMic() {
     _signaling?.muteMic();
   }
@@ -325,7 +276,7 @@ class _BodyCallBody extends State<BodyCallBody> with SingleTickerProviderStateMi
     var avatarWidget = <Widget>[];
 
     for (var element in callUser) {
-      if (element != name) name = "$name - ${element.name}";
+      if (element.name != name) name = "$name - ${element.name}";
       avatarWidget.add(SizedBox(
         height: 50,
         width: 50,
@@ -391,11 +342,7 @@ class _BodyCallBody extends State<BodyCallBody> with SingleTickerProviderStateMi
   }
 
   List<Widget> _videoRenderCall(BuildContext context, width, height) {
-    List<Widget> viewRender = [
-      Container(
-        child: Text('empty'),
-      )
-    ];
+    List<Widget> viewRender = [];
     for (var user in widget.to) {
       if (user.id != PreferenceManager.instance.currentUser.id) {
         var container = Container(
@@ -424,7 +371,7 @@ class _BodyCallBody extends State<BodyCallBody> with SingleTickerProviderStateMi
   @override
   Widget build(BuildContext context) {
     return BlocConsumer<CallGroupBloc, CallGroupState>(builder: (context, state) {
-      var width = MediaQuery.of(context).size.width / 2;
+      var width = MediaQuery.of(context).size.width / (widget.to.length == 2 ? 1 : 2);
       var height = MediaQuery.of(context).size.height;
       return Scaffold(
           floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
@@ -442,9 +389,9 @@ class _BodyCallBody extends State<BodyCallBody> with SingleTickerProviderStateMi
                       ),
                     ),
                     FloatingActionButton(
-                      child: const Icon(Icons.switch_camera),
                       tooltip: 'Camera',
                       onPressed: _switchCamera,
+                      child: const Icon(Icons.switch_camera),
                     ),
                     FloatingActionButton(
                       tooltip: 'Mute Mic',
@@ -454,8 +401,8 @@ class _BodyCallBody extends State<BodyCallBody> with SingleTickerProviderStateMi
                     FloatingActionButton(
                       onPressed: _hangUp,
                       tooltip: 'Hangup',
-                      child: Icon(Icons.call_end),
                       backgroundColor: Colors.pink,
+                      child: const Icon(Icons.call_end),
                     ),
                   ]))
               : null,
@@ -463,19 +410,19 @@ class _BodyCallBody extends State<BodyCallBody> with SingleTickerProviderStateMi
               ? OrientationBuilder(builder: (context, orientation) {
                   return Stack(children: <Widget>[
                     GridView.count(
-                        crossAxisCount: 2,
+                        crossAxisCount: widget.to.length == 2 ? 1 : 2,
                         childAspectRatio: 2 / 3,
                         mainAxisSpacing: 2,
                         crossAxisSpacing: 2,
                         children: _videoRenderCall(context, width, height)),
                     Positioned(
                       left: 20.0,
-                      top: 20.0,
+                      top: 60.0,
                       child: Container(
                         width: orientation == Orientation.portrait ? 90.0 : 120.0,
                         height: orientation == Orientation.portrait ? 120.0 : 90.0,
+                        decoration: const BoxDecoration(color: Colors.black54),
                         child: RTCVideoView(_localRenderer, mirror: true),
-                        decoration: BoxDecoration(color: Colors.black54),
                       ),
                     ),
                   ]);
@@ -496,7 +443,6 @@ class _BodyCallBody extends State<BodyCallBody> with SingleTickerProviderStateMi
       } else if (state is InviteOtherConnect) {
         Fluttertoast.showToast(msg: '[invite more]: ${state.userIds.length.toString()}');
       } else if (state is CloseRoom) {
-        //Remove later
         _hangUp();
         Navigator.pop(context);
       }

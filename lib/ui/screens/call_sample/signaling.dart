@@ -1,12 +1,8 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 
-import '../../../utils/device_info.dart' if (dart.library.js) '../utils/device_info_web.dart';
-import '../../../utils/websocket.dart' if (dart.library.js) '../utils/websocket_web.dart';
 import 'Constants.dart';
 import 'random_string.dart';
 
@@ -39,21 +35,13 @@ class Session {
 }
 
 class Signaling {
-  Signaling(this._host, this._context);
-
-  final JsonEncoder _encoder = JsonEncoder();
-  final JsonDecoder _decoder = JsonDecoder();
   final String _selfId = FirebaseAuth.instance.currentUser?.uid ?? randomNumeric(6);
-  SimpleWebSocket? _socket;
-  BuildContext? _context;
-  var _host;
-  Map<String, Session> _sessions = {};
+  final Map<String, Session> _sessions = {};
   MediaStream? _localStream;
 
   List<RTCRtpSender> _senders = <RTCRtpSender>[];
   VideoSource _videoSource = VideoSource.Camera;
 
-  Function(SignalingState state)? onSignalingStateChange;
   Function(WebRTCSessionState state)? onWebRTCSessionState;
   Function(Session session, CallState state)? onCallStateChange;
   Function(String userId, RTCPeerConnectionState state)? onConnectionState;
@@ -88,17 +76,16 @@ class Signaling {
 
   close() async {
     await _cleanSessions();
-    _socket?.close();
   }
 
   void switchCamera() {
     if (_localStream != null) {
       if (_videoSource != VideoSource.Camera) {
-        _senders.forEach((sender) {
+        for (var sender in _senders) {
           if (sender.track!.kind == 'video') {
             sender.replaceTrack(_localStream!.getVideoTracks()[0]);
           }
-        });
+        }
         _videoSource = VideoSource.Camera;
         onLocalStream?.call(_localStream!);
       } else {
@@ -107,30 +94,19 @@ class Signaling {
     }
   }
 
-  void switchToScreenSharing(MediaStream stream) {
-    if (_localStream != null && _videoSource != VideoSource.Screen) {
-      _senders.forEach((sender) {
-        if (sender.track!.kind == 'video') {
-          sender.replaceTrack(stream.getVideoTracks()[0]);
-        }
-      });
-      onLocalStream?.call(stream);
-      _videoSource = VideoSource.Screen;
-    }
-  }
-
   void muteMic() {
     if (_localStream != null) {
       bool enabled = _localStream!.getAudioTracks()[0].enabled;
       _localStream!.getAudioTracks()[0].enabled = !enabled;
+      Helper.setMicrophoneMute(!enabled, _localStream!.getAudioTracks()[0]);
     }
   }
 
-  void invite(String media, List<String> to, String from, nameCaller, avatar) async {
+  void invite(List<String> to) async {
     var sessionId = '$_selfId-${randomNumeric(12)}';
-    Session session = await _createSession(null, sessionId: sessionId, media: media, userIds: to);
+    Session session = await _createSession(null, sessionId: sessionId, media: 'video', userIds: to);
     _sessions[sessionId] = session;
-    _createOffer(session, media, to, from, nameCaller, avatar);
+    _createOffer(session, 'video', to, _selfId);
     onCallStateChange?.call(session, CallState.CallStateNew);
     onCallStateChange?.call(session, CallState.CallStateInvite);
   }
@@ -139,20 +115,11 @@ class Signaling {
   void inviteOtherUser(List<String> to, String sessionId) async {
     var session = _sessions[sessionId];
     if (session != null) {
-      _createOffer(session, 'video', to, _selfId, null, null);
+      _createOffer(session, 'video', to, _selfId);
     }
   }
 
   void bye(String sessionId, List<String> to, String from) {
-    _send(
-        'bye',
-        {
-          'session_id': sessionId,
-          'from': _selfId,
-        },
-        to,
-        from,
-        sessionId);
     var sess = _sessions[sessionId];
     if (sess != null) {
       _closeSession(sess);
@@ -173,26 +140,6 @@ class Signaling {
       return;
     }
     bye(session.sid, [], '');
-  }
-
-  //TODO: handle state connect server
-  Future<void> handleStateMessage(rawData, {sessionId}) async {
-    var data = rawData['data'];
-    var state = _getSeparatedMessage(data);
-    if (state == WebRTCSessionState.Active.name) {
-      onWebRTCSessionState?.call(WebRTCSessionState.Active);
-    } else if (state == WebRTCSessionState.Creating.name) {
-      onWebRTCSessionState?.call(WebRTCSessionState.Creating);
-    } else if (state == WebRTCSessionState.Ready.name) {
-      onWebRTCSessionState?.call(WebRTCSessionState.Ready);
-    } else if (state == WebRTCSessionState.Impossible.name) {
-      onWebRTCSessionState?.call(WebRTCSessionState.Impossible);
-    } else if (state == WebRTCSessionState.Offline.name) {
-      onWebRTCSessionState?.call(WebRTCSessionState.Offline);
-    } else if (state == WebRTCSessionState.Close.name) {
-      _handelBye(sessionId);
-      onWebRTCSessionState?.call(WebRTCSessionState.Close);
-    }
   }
 
   //TODO: handle sent event to server
@@ -218,20 +165,6 @@ class Signaling {
         break;
       default:
         break;
-    }
-  }
-
-  void onMessage(message) async {
-    var status = message['data'];
-    var sessionId = message['sessionId'];
-    if (status.toLowerCase().startsWith(SignalingCommand.STATE.name.toLowerCase())) {
-      handleStateMessage(message, sessionId: sessionId);
-    } else if (status.toLowerCase().startsWith(SignalingCommand.OFFER.name.toLowerCase())) {
-      handleSignalingCommand(SignalingCommand.OFFER, status);
-    } else if (status.toLowerCase().startsWith(SignalingCommand.ANSWER.name.toLowerCase())) {
-      handleSignalingCommand(SignalingCommand.ANSWER, status, sessionId: sessionId);
-    } else if (status.toLowerCase().startsWith(SignalingCommand.ICE.name.toLowerCase())) {
-      handleSignalingCommand(SignalingCommand.ICE, status, sessionId: sessionId);
     }
   }
 
@@ -332,32 +265,12 @@ class Signaling {
     }
   }
 
-  Future<void> connect() async {
-    var url = '$_host/rtc?uid=$_selfId';
-    _socket = SimpleWebSocket(url);
-
-    print('connect to $url');
-    _socket?.onOpen = () {
-      print('onOpen');
-      onSignalingStateChange?.call(SignalingState.ConnectionOpen);
-      _send('new', {'name': DeviceInfo.label, 'id': _selfId, 'user_agent': DeviceInfo.userAgent},
-          null, null, null);
-    };
-
-    _socket?.onMessage = (message) {
-      print('Received data: ' + message);
-      onMessage(_decoder.convert(message));
-    };
-
-    _socket?.onClose = (int? code, String? reason) {
-      print('Closed by server [$code => $reason]!');
-      onSignalingStateChange?.call(SignalingState.ConnectionClosed);
-    };
-
-    await _socket?.connect();
+  connect() async {
+    await Future.delayed(const Duration(seconds: 1));
+    onWebRTCSessionState?.call(WebRTCSessionState.Ready);
   }
 
-  Future<MediaStream> createStream(String media, {BuildContext? context}) async {
+  Future<MediaStream> createStream() async {
     final Map<String, dynamic> mediaConstraints = {
       'audio': true,
       'video': {
@@ -370,8 +283,7 @@ class Signaling {
         'optional': [],
       }
     };
-    late MediaStream stream;
-    stream = await navigator.mediaDevices.getUserMedia(mediaConstraints);
+    MediaStream stream = await navigator.mediaDevices.getUserMedia(mediaConstraints);
 
     onLocalStream?.call(stream);
     return stream;
@@ -385,9 +297,7 @@ class Signaling {
   }) async {
     var newSession = session ?? Session(sid: sessionId, to: userIds);
     var pcs = <String, RTCPeerConnection>{};
-    if (media != 'data') {
-      _localStream = await createStream(media, context: _context);
-    }
+    _localStream = await createStream();
     for (var userId in userIds) {
       if (userId != _selfId) {
         List<MediaStream> _remoteStreams = <MediaStream>[];
@@ -396,28 +306,28 @@ class Signaling {
           ..._iceServers,
           ...{'sdpSemantics': sdpSemantics}
         }, _config);
-        if (media != 'data') {
-          switch (sdpSemantics) {
-            case 'plan-b':
-              pc.onAddStream = (MediaStream stream) {
-                onAddRemoteStream?.call(newSession, stream, userId);
-                _remoteStreams.add(stream);
-              };
-              await pc.addStream(_localStream!);
-              break;
-            case 'unified-plan':
-              // Unified-Plan
-              pc.onTrack = (event) {
-                if (event.track.kind == 'video') {
-                  onAddRemoteStream?.call(newSession, event.streams[0], userId);
-                }
-              };
-              _localStream!.getTracks().forEach((track) async {
-                _senders.add(await pc.addTrack(track, _localStream!));
-              });
-              break;
-          }
+
+        switch (sdpSemantics) {
+          case 'plan-b':
+            pc.onAddStream = (MediaStream stream) {
+              onAddRemoteStream?.call(newSession, stream, userId);
+              _remoteStreams.add(stream);
+            };
+            await pc.addStream(_localStream!);
+            break;
+          case 'unified-plan':
+            // Unified-Plan
+            pc.onTrack = (event) {
+              if (event.track.kind == 'video') {
+                onAddRemoteStream?.call(newSession, event.streams[0], userId);
+              }
+            };
+            _localStream!.getTracks().forEach((track) async {
+              _senders.add(await pc.addTrack(track, _localStream!));
+            });
+            break;
         }
+
         pc.onIceCandidate = (candidate) async {
           if (candidate == null) {
             print('onIceCandidate: complete!');
@@ -465,8 +375,7 @@ class Signaling {
     return newSession;
   }
 
-  Future<void> _createOffer(
-      Session session, String media, List<String> to, String from, nameCaller, avatar) async {
+  Future<void> _createOffer(Session session, String media, List<String> to, String from) async {
     for (var userId in to) {
       if (userId != from) {
         try {
@@ -474,8 +383,7 @@ class Signaling {
           if (pc != null && session.isConnectSuccess[userId] == null) {
             RTCSessionDescription s = await pc.createOffer(media == 'data' ? _dcConstraints : {});
             await pc.setLocalDescription(_fixSdp(s));
-            _send(SignalingCommand.OFFER.name, s.sdp, userId, from, session.sid,
-                nameCaller: nameCaller, avatar: avatar);
+            _send(SignalingCommand.OFFER.name, s.sdp, userId, from, session.sid);
           } else {
             throw NullThrownError();
           }
@@ -507,21 +415,12 @@ class Signaling {
     }
   }
 
-  _send(event, data, to, from, sessionId, {nameCaller, avatar}) {
-    var request = {};
-    request["sessionId"] = sessionId;
-    request["data"] = "$event $data";
-    request["to"] = to;
-    request["from"] = from;
-    request["nameCaller"] = nameCaller;
-    request["avatar"] = avatar;
-
-    print("[sendCommand] -->${_encoder.convert(request)}");
+  _send(event, data, to, from, sessionId) {
+    print("[sendCommand] -->${"$event $data"}");
     if ([SignalingCommand.OFFER.name, SignalingCommand.ANSWER.name, SignalingCommand.ICE.name]
         .contains(event.toUpperCase())) {
       sendData?.call(sessionId, to, "$event $data");
     }
-    //_socket?.send(_encoder.convert(request));
   }
 
   Future<void> _cleanSessions() async {
@@ -540,19 +439,6 @@ class Signaling {
     _sessions.clear();
   }
 
-  void _closeSessionByPeerId(String peerId) {
-    var session;
-    _sessions.removeWhere((String key, Session sess) {
-      var ids = key.split('-');
-      session = sess;
-      return peerId == ids[0] || peerId == ids[1];
-    });
-    if (session != null) {
-      _closeSession(session);
-      onCallStateChange?.call(session, CallState.CallStateBye);
-    }
-  }
-
   Future<void> _closeSession(Session session) async {
     _localStream?.getTracks().forEach((element) async {
       await element.stop();
@@ -569,17 +455,5 @@ class Signaling {
 
   String _getSeparatedMessage(String text) {
     return text.split(' ').skip(1).join(' ');
-  }
-
-  Future<void> onSessionScreenReady(List<String> to, {nameCaller, avatar}) async {
-    if (offer != null) {
-      var peerId = '1';
-      var sessionId = _selfId + '-' + peerId;
-      accept(sessionId);
-      print("--------accept--------");
-    } else {
-      invite('video', to, _selfId, nameCaller, avatar);
-      print("--------invite--------");
-    }
   }
 }

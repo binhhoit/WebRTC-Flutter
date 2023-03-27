@@ -8,7 +8,6 @@ import 'package:webrtc_flutter/ui/screens/call_group/components/call_group_body.
 
 class CallGroupScreen extends StatefulWidget {
   static String tag = 'call_group';
-  final String host;
   final to;
   final bool isRequestCall;
   final String? session;
@@ -17,7 +16,6 @@ class CallGroupScreen extends StatefulWidget {
 
   const CallGroupScreen(
       {super.key,
-      required this.host,
       required this.to,
       required this.session,
       required this.offer,
@@ -39,7 +37,6 @@ class _CallGroupScreenState extends State<CallGroupScreen> {
     return BlocProvider<CallGroupBloc>(
       create: (context) => injector.get(),
       child: BodyCallBody(
-          host: widget.host,
           to: widget.to,
           session: widget.session,
           offer: widget.offer,

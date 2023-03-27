@@ -40,12 +40,8 @@ class _CreateGroupScreen extends State<CreateGroupScreen> {
     Navigator.pushReplacement(
         context,
         MaterialPageRoute<void>(
-            builder: (_) => CallGroupScreen(
-                host: homeBloc.getBaseUrlServer(),
-                to: users,
-                session: null,
-                offer: null,
-                isRequestCall: true)));
+            builder: (_) =>
+                CallGroupScreen(to: users, session: null, offer: null, isRequestCall: true)));
   }
 
   @override

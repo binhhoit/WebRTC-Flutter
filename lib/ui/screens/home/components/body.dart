@@ -5,7 +5,6 @@ import 'package:webrtc_flutter/domain/entities/room/room.dart';
 import 'package:webrtc_flutter/domain/entities/user/user.dart';
 import 'package:webrtc_flutter/platform/local/preferences/preference_manager.dart';
 import 'package:webrtc_flutter/ui/screens/call_group/call_group_screen.dart';
-import 'package:webrtc_flutter/ui/screens/call_sample/call_screen.dart';
 import 'package:webrtc_flutter/ui/screens/home/bloc/home_bloc.dart';
 import 'package:webrtc_flutter/ui/screens/home/bloc/home_state.dart';
 
@@ -19,13 +18,12 @@ class BodyHome extends StatefulWidget {
 }
 
 class _BodyHome extends State<BodyHome> {
-  HomeBloc? _bloc;
   var users = <User>[];
   var rooms = <Room>[];
+  late User currentUser;
 
   @override
   void initState() {
-    _bloc = context.read<HomeBloc>();
     super.initState();
   }
 
@@ -52,6 +50,7 @@ class _BodyHome extends State<BodyHome> {
           users = state.users;
         });
       } else if (state is CurrentUser) {
+        currentUser = state.user;
         widget.getCurrentUser(state.user);
       } else if (state is RoomData) {
         setState(() {
@@ -81,9 +80,8 @@ class _BodyHome extends State<BodyHome> {
           Navigator.push(
               context,
               MaterialPageRoute<void>(
-                  builder: (_) => CallScreen(
-                        host: _bloc?.getBaseUrlServer() ?? "",
-                        to: [item],
+                  builder: (_) => CallGroupScreen(
+                        to: [item, currentUser],
                         session: null,
                         offer: null,
                         isRequestCall: true,
@@ -112,7 +110,6 @@ class _BodyHome extends State<BodyHome> {
               context,
               MaterialPageRoute<void>(
                   builder: (_) => CallGroupScreen(
-                        host: _bloc?.getBaseUrlServer() ?? "",
                         to: users.toList(),
                         session: null,
                         offer: null,

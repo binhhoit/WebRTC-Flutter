@@ -4,12 +4,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_callkit_incoming/entities/call_event.dart';
 import 'package:flutter_callkit_incoming/flutter_callkit_incoming.dart';
 import 'package:fluttertoast/fluttertoast.dart';
-import 'package:webrtc_flutter/injection.dart';
-import 'package:webrtc_flutter/platform/config/build_config.dart';
 import 'package:webrtc_flutter/ui/screens/auth/auth_bloc.dart';
 import 'package:webrtc_flutter/ui/screens/auth/auth_state.dart';
 import 'package:webrtc_flutter/ui/screens/call/login_bloc.dart';
-import 'package:webrtc_flutter/ui/screens/call_sample/call_screen.dart';
+import 'package:webrtc_flutter/ui/screens/call_group/call_group_screen.dart';
 import 'package:webrtc_flutter/ui/screens/home/home_screen.dart';
 import 'package:webrtc_flutter/ui/screens/login/login_screen.dart';
 import 'package:webrtc_flutter/ui/screens/splash/splash_screen.dart';
@@ -82,8 +80,7 @@ class _AppState extends State<App> {
         break;
       case Event.ACTION_CALL_ACCEPT:
         _navigator.push(MaterialPageRoute<void>(
-            builder: (_) => CallScreen(
-                  host: injector.get<BuildConfig>().baseUrl,
+            builder: (_) => CallGroupScreen(
                   to: [],
                   session: event.body['extra']['sessionId'],
                   offer: decompress(event.body['extra']['offer_message']),
