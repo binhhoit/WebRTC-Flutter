@@ -66,7 +66,7 @@ class HomeBloc extends Cubit<HomeState> {
           final room = Room.fromJson(jsonDecode(jsonEncode(doc.value)));
           if (room.idUsers.contains(_currentId)) {
             if (room.idUsers.length == 2) {
-              repairDataNotify(room);
+              if (room.from != _currentId) repairDataNotify(room);
             } else {
               rooms.add(room);
             }

@@ -12,6 +12,7 @@ class Room extends HiveObject with _$Room {
   factory Room({
     @HiveField(0) required String id,
     @HiveField(1) required List<String> idUsers,
+    @HiveField(2) required String from,
   }) = _Room;
 
   factory Room.fromJson(Map<String, dynamic> json) => _$RoomFromJson(json);

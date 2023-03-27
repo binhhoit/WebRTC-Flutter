@@ -10,11 +10,12 @@ import 'package:flutter_callkit_incoming/entities/android_params.dart';
 import 'package:flutter_callkit_incoming/entities/call_kit_params.dart';
 import 'package:flutter_callkit_incoming/entities/ios_params.dart';
 import 'package:flutter_callkit_incoming/flutter_callkit_incoming.dart';
+import 'package:uuid/uuid.dart';
 
 class NotificationUtils {
   static Future<void> showCallkitIncoming(RemoteMessage message) async {
     final params = CallKitParams(
-      id: '${message.data['nameCaller']}',
+      id: const Uuid().v5(Uuid.NAMESPACE_URL, '${message.data['nameCaller']}'),
       nameCaller: '${message.data['nameCaller']}',
       appName: 'STS WebRTC',
       avatar: '${message.data['avatar']}',
@@ -32,10 +33,10 @@ class NotificationUtils {
         isShowMissedCallNotification: false,
       ),
       ios: IOSParams(
-        iconName: 'CallKitLogo',
-        handleType: '',
+        iconName: 'ic_launcher',
+        handleType: 'generic',
         supportsVideo: true,
-        maximumCallGroups: 2,
+        maximumCallGroups: 1,
         maximumCallsPerCallGroup: 1,
         audioSessionMode: 'default',
         audioSessionActive: true,
