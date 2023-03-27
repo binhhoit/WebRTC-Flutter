@@ -37,11 +37,8 @@ class _CreateGroupScreen extends State<CreateGroupScreen> {
     var users = _users.where((user) => user.isSelected == true).toList();
     var currentUser = PreferenceManager.instance.currentUser;
     users.add(currentUser);
-    Navigator.pushReplacement(
-        context,
-        MaterialPageRoute<void>(
-            builder: (_) =>
-                CallGroupScreen(to: users, session: null, offer: null, isRequestCall: true)));
+    Navigator.pushReplacement(context,
+        MaterialPageRoute<void>(builder: (_) => CallGroupScreen(to: users, isRequestCall: true)));
   }
 
   @override

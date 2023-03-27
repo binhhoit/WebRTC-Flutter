@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_callkit_incoming/entities/call_event.dart';
+import 'package:flutter_callkit_incoming/flutter_callkit_incoming.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:webrtc_flutter/domain/entities/room/room.dart';
 import 'package:webrtc_flutter/domain/entities/user/user.dart';
@@ -24,6 +26,18 @@ class _BodyHome extends State<BodyHome> {
 
   @override
   void initState() {
+    FlutterCallkitIncoming.onEvent.listen((event) {
+      _callEventHandle(event, () {
+        var users = (event?.body['extra']['idUsers'] as List<dynamic>)
+            .map((e) => User(id: e, avatar: '', email: '', name: ''));
+        Navigator.of(context).push(MaterialPageRoute<void>(
+            builder: (_) => CallGroupScreen(
+                  to: users,
+                  roomId: event?.body['extra']['roomId'],
+                  isRequestCall: false,
+                )));
+      });
+    });
     super.initState();
   }
 
@@ -82,8 +96,6 @@ class _BodyHome extends State<BodyHome> {
               MaterialPageRoute<void>(
                   builder: (_) => CallGroupScreen(
                         to: [item, currentUser],
-                        session: null,
-                        offer: null,
                         isRequestCall: true,
                       )));
         },
@@ -111,8 +123,6 @@ class _BodyHome extends State<BodyHome> {
               MaterialPageRoute<void>(
                   builder: (_) => CallGroupScreen(
                         to: users.toList(),
-                        session: null,
-                        offer: null,
                         isRequestCall: false,
                         roomId: item.id,
                       )));
@@ -121,5 +131,58 @@ class _BodyHome extends State<BodyHome> {
       ),
       const Divider()
     ]);
+  }
+}
+
+_callEventHandle(CallEvent? event, Function callback) {
+  print(event);
+
+  switch (event!.event) {
+    case Event.ACTION_CALL_INCOMING:
+// TODO: received an incoming call
+      break;
+    case Event.ACTION_CALL_START:
+// TODO: started an outgoing call
+// TODO: show screen calling in Flutter
+      break;
+    case Event.ACTION_CALL_ACCEPT:
+      callback.call();
+      Fluttertoast.showToast(
+          msg: 'Accept Call}',
+          backgroundColor: Colors.green,
+          textColor: Colors.white,
+          fontSize: 16);
+      print(event.body.toString());
+      break;
+    case Event.ACTION_CALL_DECLINE:
+      //_callBloc?.declinedCall(sessionId: event.body['extra']['sessionId']);
+      break;
+    case Event.ACTION_CALL_ENDED:
+// TODO: ended an incoming/outgoing call
+      break;
+    case Event.ACTION_CALL_TIMEOUT:
+      //_callBloc?.declinedCall(sessionId: event.body['extra']['sessionId']);
+      break;
+    case Event.ACTION_CALL_CALLBACK:
+// TODO: only Android - click action `Call back` from missed call notification
+      break;
+    case Event.ACTION_CALL_TOGGLE_HOLD:
+// TODO: only iOS
+      break;
+    case Event.ACTION_CALL_TOGGLE_MUTE:
+// TODO: only iOS
+      break;
+    case Event.ACTION_CALL_TOGGLE_DMTF:
+// TODO: only iOS
+      break;
+    case Event.ACTION_CALL_TOGGLE_GROUP:
+// TODO: only iOS
+      break;
+    case Event.ACTION_CALL_TOGGLE_AUDIO_SESSION:
+// TODO: only iOS
+      break;
+    case Event.ACTION_DID_UPDATE_DEVICE_PUSH_TOKEN_VOIP:
+// TODO: only iOS
+      break;
   }
 }

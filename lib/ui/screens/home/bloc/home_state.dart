@@ -13,4 +13,5 @@ class HomeState with _$HomeState {
   const factory HomeState.users(List<User> users) = UserData;
   const factory HomeState.rooms(List<Room> rooms) = RoomData;
   const factory HomeState.currentUser(User user) = CurrentUser;
+  const factory HomeState.myCall(Room room) = MyCall;
 }

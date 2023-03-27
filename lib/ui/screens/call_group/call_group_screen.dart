@@ -10,17 +10,9 @@ class CallGroupScreen extends StatefulWidget {
   static String tag = 'call_group';
   final to;
   final bool isRequestCall;
-  final String? session;
-  final String? offer;
   final String? roomId;
 
-  const CallGroupScreen(
-      {super.key,
-      required this.to,
-      required this.session,
-      required this.offer,
-      required this.isRequestCall,
-      this.roomId});
+  const CallGroupScreen({super.key, required this.to, required this.isRequestCall, this.roomId});
 
   @override
   _CallGroupScreenState createState() => _CallGroupScreenState();
@@ -36,12 +28,8 @@ class _CallGroupScreenState extends State<CallGroupScreen> {
   Widget build(BuildContext context) {
     return BlocProvider<CallGroupBloc>(
       create: (context) => injector.get(),
-      child: BodyCallBody(
-          to: widget.to,
-          session: widget.session,
-          offer: widget.offer,
-          isRequestCall: widget.isRequestCall,
-          roomId: widget.roomId),
+      child:
+          BodyCallBody(to: widget.to, isRequestCall: widget.isRequestCall, roomId: widget.roomId),
     );
   }
 }

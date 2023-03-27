@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fireAuth;
 import 'package:firebase_database/firebase_database.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
 import 'package:webrtc_flutter/domain/entities/room/room.dart';
@@ -10,11 +11,15 @@ import 'package:webrtc_flutter/domain/entities/user/user.dart';
 import 'package:webrtc_flutter/platform/config/build_config.dart';
 import 'package:webrtc_flutter/platform/local/preferences/preference_manager.dart';
 import 'package:webrtc_flutter/ui/screens/home/bloc/home_state.dart';
+import 'package:webrtc_flutter/utils/notification_utils.dart';
 
 @injectable
 class HomeBloc extends Cubit<HomeState> {
   BuildConfig buildConfig;
   final DatabaseReference _database = FirebaseDatabase.instance.ref();
+  final _currentId = PreferenceManager.instance.currentUser.id;
+  final _users = <User>[];
+  final showNotify = [];
 
   HomeBloc(this.buildConfig) : super(const HomeState.init()) {
     _getListUser();
@@ -38,6 +43,7 @@ class HomeBloc extends Cubit<HomeState> {
             emit(HomeState.currentUser(user));
           } else {
             users.add(user);
+            _users.add(user);
           }
         }
 
@@ -58,15 +64,43 @@ class HomeBloc extends Cubit<HomeState> {
         final rooms = <Room>[];
         for (var doc in event.snapshot.children) {
           final room = Room.fromJson(jsonDecode(jsonEncode(doc.value)));
-          rooms.add(room);
+          if (room.idUsers.contains(_currentId)) {
+            if (room.idUsers.length == 2) {
+              repairDataNotify(room);
+            } else {
+              rooms.add(room);
+            }
+          }
         }
-        if (!isClosed) emit(HomeState.rooms(rooms));
+        if (!isClosed) {
+          emit(HomeState.rooms(rooms));
+        }
       }, onError: (e) {
         print(e);
         emit(HomeState.error(e.toString()));
       });
     } catch (e) {
       emit(HomeState.error(e.toString()));
+    }
+  }
+
+  Future<void> repairDataNotify(Room room) async {
+    if (!showNotify.contains(room.id)) {
+      showNotify.add(room.id);
+      var idUserCall = room.idUsers.where((id) => id != _currentId).first;
+      var userSnap = await databaseReference.collection('users').doc(idUserCall).get();
+      final user = User.fromJson(userSnap.data()!);
+      var map = <String, dynamic>{
+        'extra': {'sessionId': room.id},
+        'data': {
+          'nameCaller': user.name,
+          'avatar': user.avatar,
+          'roomId': room.id,
+          'idUsers': room.idUsers
+        }
+      };
+      var message = RemoteMessage.fromMap(map);
+      NotificationUtils.showCallkitIncoming(message);
     }
   }
 }

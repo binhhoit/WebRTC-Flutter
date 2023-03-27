@@ -1,17 +1,11 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_callkit_incoming/entities/call_event.dart';
-import 'package:flutter_callkit_incoming/flutter_callkit_incoming.dart';
-import 'package:fluttertoast/fluttertoast.dart';
 import 'package:webrtc_flutter/ui/screens/auth/auth_bloc.dart';
 import 'package:webrtc_flutter/ui/screens/auth/auth_state.dart';
-import 'package:webrtc_flutter/ui/screens/call/login_bloc.dart';
-import 'package:webrtc_flutter/ui/screens/call_group/call_group_screen.dart';
 import 'package:webrtc_flutter/ui/screens/home/home_screen.dart';
 import 'package:webrtc_flutter/ui/screens/login/login_screen.dart';
 import 'package:webrtc_flutter/ui/screens/splash/splash_screen.dart';
-import 'package:webrtc_flutter/utils/string_ext.dart';
 
 class App extends StatefulWidget {
   App({Key? key}) : super(key: key);
@@ -22,14 +16,11 @@ class App extends StatefulWidget {
 
 class _AppState extends State<App> {
   final _navigatorKey = GlobalKey<NavigatorState>();
-  CallBloc? _callBloc;
   NavigatorState get _navigator => _navigatorKey.currentState!;
 
   @override
   void initState() {
     super.initState();
-    _callBloc = context.read<CallBloc>();
-    FlutterCallkitIncoming.onEvent.listen(_callEventHandle);
   }
 
   @override
@@ -65,64 +56,5 @@ class _AppState extends State<App> {
           },
           onGenerateRoute: (_) => MaterialPageRoute<void>(builder: (_) => const SplashScreen())),
     );
-  }
-
-  _callEventHandle(CallEvent? event) {
-    print(event);
-
-    switch (event!.event) {
-      case Event.ACTION_CALL_INCOMING:
-// TODO: received an incoming call
-        break;
-      case Event.ACTION_CALL_START:
-// TODO: started an outgoing call
-// TODO: show screen calling in Flutter
-        break;
-      case Event.ACTION_CALL_ACCEPT:
-        _navigator.push(MaterialPageRoute<void>(
-            builder: (_) => CallGroupScreen(
-                  to: [],
-                  session: event.body['extra']['sessionId'],
-                  offer: decompress(event.body['extra']['offer_message']),
-                  isRequestCall: false,
-                )));
-        Fluttertoast.showToast(
-            msg: 'Accept Call}',
-            backgroundColor: Colors.green,
-            textColor: Colors.white,
-            fontSize: 16);
-        print(event.body.toString());
-        break;
-      case Event.ACTION_CALL_DECLINE:
-        _callBloc?.declinedCall(sessionId: event.body['extra']['sessionId']);
-        break;
-      case Event.ACTION_CALL_ENDED:
-// TODO: ended an incoming/outgoing call
-        break;
-      case Event.ACTION_CALL_TIMEOUT:
-        _callBloc?.declinedCall(sessionId: event.body['extra']['sessionId']);
-        break;
-      case Event.ACTION_CALL_CALLBACK:
-// TODO: only Android - click action `Call back` from missed call notification
-        break;
-      case Event.ACTION_CALL_TOGGLE_HOLD:
-// TODO: only iOS
-        break;
-      case Event.ACTION_CALL_TOGGLE_MUTE:
-// TODO: only iOS
-        break;
-      case Event.ACTION_CALL_TOGGLE_DMTF:
-// TODO: only iOS
-        break;
-      case Event.ACTION_CALL_TOGGLE_GROUP:
-// TODO: only iOS
-        break;
-      case Event.ACTION_CALL_TOGGLE_AUDIO_SESSION:
-// TODO: only iOS
-        break;
-      case Event.ACTION_DID_UPDATE_DEVICE_PUSH_TOKEN_VOIP:
-// TODO: only iOS
-        break;
-    }
   }
 }

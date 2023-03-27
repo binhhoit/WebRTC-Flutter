@@ -15,17 +15,9 @@ class BodyCallBody extends StatefulWidget {
   static String tag = 'call_group';
   final to;
   final bool isRequestCall;
-  final String? session;
-  final String? offer;
   final String? roomId;
 
-  const BodyCallBody(
-      {super.key,
-      required this.to,
-      required this.session,
-      required this.offer,
-      required this.isRequestCall,
-      this.roomId});
+  const BodyCallBody({super.key, required this.to, required this.isRequestCall, this.roomId});
 
   @override
   _BodyCallBody createState() => _BodyCallBody();
