@@ -103,4 +103,8 @@ class HomeBloc extends Cubit<HomeState> {
       NotificationUtils.showCallkitIncoming(message);
     }
   }
+
+  Future<void> sendByeUser(String idRoom) async {
+    await _database.child('rooms/$idRoom/bye').set({'bye': true});
+  }
 }

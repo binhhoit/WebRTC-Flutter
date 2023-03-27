@@ -102,19 +102,10 @@ class _BodyCallBody extends State<BodyCallBody> with SingleTickerProviderStateMi
                 (widget.to as List<dynamic>).map((e) => e.id).cast<String>().toList();
             print("--------invite--------");
             _signaling?.invite(ids);
-          } else {
-            /* await _signaling?.handleSignalingCommand(SignalingCommand.OFFER, widget.offer ?? '',
-                sessionId: widget.session);
-            _accept();*/
           }
           break;
         case WebRTCSessionState.Creating:
           print(state);
-          /*if (!widget.isRequestCall) {
-            await _signaling?.handleSignalingCommand(SignalingCommand.OFFER, widget.offer ?? '',
-                sessionId: widget.session);
-            _accept();
-          }*/
           break;
         case WebRTCSessionState.Impossible:
           print(state);
@@ -234,18 +225,6 @@ class _BodyCallBody extends State<BodyCallBody> with SingleTickerProviderStateMi
         textColor: Colors.white,
         fontSize: 16);
   }
-
-  /*_accept() {
-    if (_session != null) {
-      _signaling?.accept(_session!.sid);
-    }
-  }
-
-  _reject() {
-    if (_session != null) {
-      _signaling?.reject(_session!.sid);
-    }
-  }*/
 
   _hangUp() {
     if (_session != null) {

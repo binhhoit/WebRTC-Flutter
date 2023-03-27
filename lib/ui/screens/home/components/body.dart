@@ -23,9 +23,11 @@ class _BodyHome extends State<BodyHome> {
   var users = <User>[];
   var rooms = <Room>[];
   late User currentUser;
+  late HomeBloc _bloc;
 
   @override
   void initState() {
+    _bloc = context.read();
     FlutterCallkitIncoming.onEvent.listen((event) {
       _callEventHandle(event, () {
         var users = (event?.body['extra']['idUsers'] as List<dynamic>)
@@ -36,6 +38,8 @@ class _BodyHome extends State<BodyHome> {
                   roomId: event?.body['extra']['roomId'],
                   isRequestCall: false,
                 )));
+      }, () {
+        _bloc.sendByeUser(event?.body['extra']['roomId']);
       });
     });
     super.initState();
@@ -134,7 +138,7 @@ class _BodyHome extends State<BodyHome> {
   }
 }
 
-_callEventHandle(CallEvent? event, Function callback) {
+_callEventHandle(CallEvent? event, Function callback, Function bye) {
   print(event);
 
   switch (event!.event) {
@@ -155,13 +159,13 @@ _callEventHandle(CallEvent? event, Function callback) {
       print(event.body.toString());
       break;
     case Event.ACTION_CALL_DECLINE:
-      //_callBloc?.declinedCall(sessionId: event.body['extra']['sessionId']);
+      bye.call();
       break;
     case Event.ACTION_CALL_ENDED:
 // TODO: ended an incoming/outgoing call
       break;
     case Event.ACTION_CALL_TIMEOUT:
-      //_callBloc?.declinedCall(sessionId: event.body['extra']['sessionId']);
+      bye.call();
       break;
     case Event.ACTION_CALL_CALLBACK:
 // TODO: only Android - click action `Call back` from missed call notification
