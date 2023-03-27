@@ -109,7 +109,10 @@ class _CreateGroupScreen extends State<CreateGroupScreen> {
                                   value: _users[index].isSelected,
                                   onChanged: (bool? value) {
                                     setState(() {
-                                      _users[index] = _users[index].copyWith(isSelected: value!);
+                                      var updatedUsers = List.from(_users).cast<User>();
+                                      var change = _users[index].copyWith(isSelected: value!);
+                                      updatedUsers[index] = change;
+                                      _users = updatedUsers;
                                     });
                                   },
                                 );

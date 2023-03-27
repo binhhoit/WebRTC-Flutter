@@ -127,7 +127,7 @@ class Signaling {
   }
 
   void invite(String media, List<String> to, String from, nameCaller, avatar) async {
-    var sessionId = /*'$_selfId-$peerId';*/ 'dQw6jgPNeshh8AEKsOr9yPpTOpp1-426658330133';
+    var sessionId = '$_selfId-${randomNumeric(12)}';
     Session session = await _createSession(null, sessionId: sessionId, media: media, userIds: to);
     _sessions[sessionId] = session;
     _createOffer(session, media, to, from, nameCaller, avatar);
