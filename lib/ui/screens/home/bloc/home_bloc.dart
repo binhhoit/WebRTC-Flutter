@@ -63,14 +63,16 @@ class HomeBloc extends Cubit<HomeState> {
       _database.child('rooms').onValue.listen((event) {
         final rooms = <Room>[];
         for (var doc in event.snapshot.children) {
-          final room = Room.fromJson(jsonDecode(jsonEncode(doc.value)));
-          if (room.idUsers.contains(_currentId)) {
-            if (room.idUsers.length == 2) {
-              if (room.from != _currentId) repairDataNotify(room);
-            } else {
-              rooms.add(room);
+          try {
+            final room = Room.fromJson(jsonDecode(jsonEncode(doc.value)));
+            if (room.idUsers.contains(_currentId)) {
+              if (room.idUsers.length == 2) {
+                if (room.from != _currentId) repairDataNotify(room);
+              } else {
+                rooms.add(room);
+              }
             }
-          }
+          } catch (e) {}
         }
         if (!isClosed) {
           emit(HomeState.rooms(rooms));

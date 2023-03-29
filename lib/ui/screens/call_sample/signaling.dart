@@ -50,7 +50,7 @@ class Signaling {
   Function(Session session, MediaStream stream, String userId)? onRemoveRemoteStream;
   Function(String, String, String)? sendData;
 
-  String get sdpSemantics => 'unified-plan';
+  String get sdpSemantics => 'plan-b';
   String? offer;
 
   final Map<String, dynamic> _iceServers = {
@@ -64,14 +64,6 @@ class Signaling {
     'optional': [
       {'DtlsSrtpKeyAgreement': true},
     ]
-  };
-
-  final Map<String, dynamic> _dcConstraints = {
-    'mandatory': {
-      'OfferToReceiveAudio': false,
-      'OfferToReceiveVideo': false,
-    },
-    'optional': [],
   };
 
   close() async {

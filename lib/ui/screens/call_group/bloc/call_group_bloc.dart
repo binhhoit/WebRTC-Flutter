@@ -133,7 +133,7 @@ class CallGroupBloc extends Cubit<CallGroupState> {
               await Future.delayed(const Duration(seconds: 1));
               duplicate.add(answer);
             } else {
-              duplicate.clear();
+              //duplicate.clear();
             }
           }
         }
