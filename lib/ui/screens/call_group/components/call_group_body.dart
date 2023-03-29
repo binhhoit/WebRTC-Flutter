@@ -228,7 +228,7 @@ class _BodyCallBody extends State<BodyCallBody> with SingleTickerProviderStateMi
 
   _hangUp() {
     if (_session != null) {
-      _signaling?.bye(_session!.sid, [], '');
+      _signaling?.bye(_session!.sid);
     }
     _bloc.deleteRoom(_session!.sid);
   }

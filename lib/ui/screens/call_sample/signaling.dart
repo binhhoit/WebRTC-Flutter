@@ -104,9 +104,9 @@ class Signaling {
 
   void invite(List<String> to) async {
     var sessionId = '$_selfId-${randomNumeric(12)}';
-    Session session = await _createSession(null, sessionId: sessionId, media: 'video', userIds: to);
+    Session session = await _createSession(null, sessionId: sessionId, userIds: to);
     _sessions[sessionId] = session;
-    _createOffer(session, 'video', to, _selfId);
+    _createOffer(session, to, _selfId);
     onCallStateChange?.call(session, CallState.CallStateNew);
     onCallStateChange?.call(session, CallState.CallStateInvite);
   }
@@ -115,11 +115,11 @@ class Signaling {
   void inviteOtherUser(List<String> to, String sessionId) async {
     var session = _sessions[sessionId];
     if (session != null) {
-      _createOffer(session, 'video', to, _selfId);
+      _createOffer(session, to, _selfId);
     }
   }
 
-  void bye(String sessionId, List<String> to, String from) {
+  void bye(String sessionId) {
     var sess = _sessions[sessionId];
     if (sess != null) {
       _closeSession(sess);
@@ -131,7 +131,7 @@ class Signaling {
     if (session == null) {
       return;
     }
-    _createAnswer(session, 'video', answerForId: answerForId);
+    _createAnswer(session, answerForId: answerForId);
   }
 
   void reject(String sessionId) {
@@ -139,7 +139,7 @@ class Signaling {
     if (session == null) {
       return;
     }
-    bye(session.sid, [], '');
+    bye(session.sid);
   }
 
   //TODO: handle sent event to server
@@ -173,8 +173,7 @@ class Signaling {
     try {
       offer = value;
       var session = _sessions[sessionId];
-      var newSession =
-          await _createSession(session, sessionId: sessionId, media: 'video', userIds: to);
+      var newSession = await _createSession(session, sessionId: sessionId, userIds: to);
       _sessions[sessionId] = newSession;
       if (newSession.isConnectSuccess[offerOfId] == null) {
         await newSession.pcs![offerOfId]!
@@ -256,15 +255,6 @@ class Signaling {
     }
   }
 
-  _handelBye(sessionId) {
-    print('bye: ' + sessionId);
-    var session = _sessions.remove(sessionId);
-    if (session != null) {
-      onCallStateChange?.call(session, CallState.CallStateBye);
-      _closeSession(session);
-    }
-  }
-
   connect() async {
     await Future.delayed(const Duration(seconds: 1));
     onWebRTCSessionState?.call(WebRTCSessionState.Ready);
@@ -292,7 +282,6 @@ class Signaling {
   Future<Session> _createSession(
     Session? session, {
     required String sessionId,
-    required String media,
     required List<String> userIds,
   }) async {
     var newSession = session ?? Session(sid: sessionId, to: userIds);
@@ -318,9 +307,7 @@ class Signaling {
           case 'unified-plan':
             // Unified-Plan
             pc.onTrack = (event) {
-              if (event.track.kind == 'video') {
-                onAddRemoteStream?.call(newSession, event.streams[0], userId);
-              }
+              onAddRemoteStream?.call(newSession, event.streams[0], userId);
             };
             _localStream!.getTracks().forEach((track) async {
               _senders.add(await pc.addTrack(track, _localStream!));
@@ -375,13 +362,13 @@ class Signaling {
     return newSession;
   }
 
-  Future<void> _createOffer(Session session, String media, List<String> to, String from) async {
+  Future<void> _createOffer(Session session, List<String> to, String from) async {
     for (var userId in to) {
       if (userId != from) {
         try {
           var pc = session.pcs?[userId];
           if (pc != null && session.isConnectSuccess[userId] == null) {
-            RTCSessionDescription s = await pc.createOffer(media == 'data' ? _dcConstraints : {});
+            RTCSessionDescription s = await pc.createOffer({});
             await pc.setLocalDescription(_fixSdp(s));
             _send(SignalingCommand.OFFER.name, s.sdp, userId, from, session.sid);
           } else {
@@ -400,12 +387,12 @@ class Signaling {
     return s;
   }
 
-  Future<void> _createAnswer(Session session, String media, {answerForId}) async {
+  Future<void> _createAnswer(Session session, {answerForId}) async {
     try {
       if (session.isConnectSuccess[answerForId] == null) {
         var pc = session.pcs?[answerForId];
         if (pc != null) {
-          RTCSessionDescription s = await pc.createAnswer(media == 'data' ? _dcConstraints : {});
+          RTCSessionDescription s = await pc.createAnswer({});
           await pc.setLocalDescription(_fixSdp(s));
           _send(SignalingCommand.ANSWER.name, s.sdp, answerForId, '', session.sid);
         }
