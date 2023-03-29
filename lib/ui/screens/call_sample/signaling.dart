@@ -50,7 +50,7 @@ class Signaling {
   Function(Session session, MediaStream stream, String userId)? onRemoveRemoteStream;
   Function(String, String, String)? sendData;
 
-  String get sdpSemantics => 'plan-b';
+  String get sdpSemantics => 'unified-plan';
   String? offer;
 
   final Map<String, dynamic> _iceServers = {
@@ -262,7 +262,9 @@ class Signaling {
           'minFrameRate': '30',
         },
         'facingMode': 'user',
-        'optional': [],
+        'optional': [
+          {'H264': true},
+        ],
       }
     };
     MediaStream stream = await navigator.mediaDevices.getUserMedia(mediaConstraints);
@@ -278,7 +280,7 @@ class Signaling {
   }) async {
     var newSession = session ?? Session(sid: sessionId, to: userIds);
     var pcs = <String, RTCPeerConnection>{};
-    _localStream = await createStream();
+    _localStream ??= await createStream();
     for (var userId in userIds) {
       if (userId != _selfId) {
         List<MediaStream> _remoteStreams = <MediaStream>[];
